@@ -5,7 +5,7 @@
 
 ### PROJECT_DIR
 ### This is the path to where you have created/cloned your project
-PROJECT_DIR       = /home/{{ YOUR USERNAME }}/path/to/MyAwesomeProject
+PROJECT_DIR       = /home/{{ YOUR USERNAME }}/path/to/hold
 
 ### AVR_GCC_VERSION
 ### Check if the version is equal or higher than 4.9
@@ -25,7 +25,7 @@ USER_LIB_PATH     :=  $(PROJECT_DIR)/lib
 
 ### BOARD_TAG
 ### It must be set to the board you are currently using. (i.e uno, mega2560, etc.)
-BOARD_TAG         = mega2560
+BOARD_TAG         = uno
 
 ### MONITOR_BAUDRATE
 ### It must be set to Serial baudrate value you are using.
