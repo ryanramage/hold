@@ -1,7 +1,7 @@
 
 # Hold
 
-Store secret messages at a location.
+Hold secret messages at a location.
 
 ![foo](/images/hold.png "Hold")
 
@@ -10,7 +10,7 @@ Store secret messages at a location.
 It's really hard to ensure someone has made it to a location.
 
 Lets say we want Alice to get to a location. Maybe even prove she has been there. Hold lets this happens, and
-further allows you to give a message to Alice only when she has got to that location.
+further, allows you to give a message to Alice only when she has got to that location.
 
 Hold is a device that you can fasten to a location. It will have a public/private key.
 You write a message to Alice, encrypt it with the Hold public key and send the message to Alice.
