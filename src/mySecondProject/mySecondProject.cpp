@@ -1,10 +1,12 @@
 #include <Arduino.h>
-// #include "MyFirstLib.h"
-#include "MySecondLib.h"
+#include "HoldState.h"
 
-MySecondClass MySecondObject;
+
+HoldState hold;
+
 
 void setup() {
+
 
 	Serial.begin(115200);
 	delay(1000);
@@ -13,10 +15,7 @@ void setup() {
 
 void loop() {
 
-	MySecondObject.methodCallNumberOne();
-	delay(1000);
-	MySecondObject.methodCallNumberTwo();
-	delay(1000);
+
 
 }
 
