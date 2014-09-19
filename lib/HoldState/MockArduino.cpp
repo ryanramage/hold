@@ -1,12 +1,26 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <csignal>
+#include <unistd.h>
 #include "MockArduino.h"
 #include "LCDMessages.h"
+
+HoldState* _handler;
+volatile int pending = 0;
+
+void signalHandler( int signum ){
+  pending = 0;
+  _handler->_on_button();
+}
+
 
 MockArduino::MockArduino() {
   for (int i = 0; i < 1024; i++){
     _eeprom[i] = 0;
   }
+  signal(SIGINT, signalHandler);
 }
+
 char MockArduino::EEPROM_read(int address) const {
   return _eeprom[address];
 }
@@ -35,13 +49,20 @@ void MockArduino::LCD_msg(unsigned char msg_num) {
 
 void MockArduino::power_off(){
   printf("HARDWARE OFF\n");
+  exit(0);
 }
 
 void MockArduino::button_or_timeout(HoldState* holdstate, int timeout) {
-
+  _handler = holdstate;
+  pending = 1;
+  sleep(timeout);
+  if (pending == 1) holdstate->_on_timeout();
 }
 
 void MockArduino::wait_for_packet_or_button_or_timeout(HoldState* holdstate, int timeout) {
-
+  _handler = holdstate;
+  pending = 1;
+  sleep(timeout );
+  if (pending == 1) holdstate->_on_timeout();
 }
 

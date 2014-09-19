@@ -84,8 +84,13 @@ void HoldState::_on_encrypted_msg(char* msg) {
 
 
 void HoldState::_on_packet(char *packet){}
-void HoldState::_on_button(){}
-void HoldState::_on_timeout(){}
+void HoldState::_on_button(){
+  if (_state == STATE_NO_PRIVATE_KEY) this->_power_off();
+}
+void HoldState::_on_timeout(){
+  if (_state == STATE_WAITING) this->_power_off();
+  if (_state == STATE_NO_PRIVATE_KEY) this->_power_off();
+}
 
 
 
