@@ -3,7 +3,7 @@
 #include <csignal>
 #include <unistd.h>
 #include "MockArduino.h"
-#include "LCDMessages.h"
+#include "../../../lib/HoldState/LCDMessages.h"
 
 HoldState* _handler;
 volatile int pending = 0;
