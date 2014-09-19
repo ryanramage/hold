@@ -14,15 +14,7 @@ class HoldState {
     bc_num getPrivateKey();
     int getState();
 
-  private:
-
-    //  VARIABLES
-    int _state;
-    HardwareIF* _hardware;
-    bc_num _private_key;
-    bc_num _modulus;
-
-    // internal states
+    // state changes...prob should not be public...
     void _waiting();
     void _no_private_key();
     void _power_off();
@@ -31,6 +23,16 @@ class HoldState {
     void _on_private_key_error(char* error);
     void _on_private_key(unsigned short n_len, char* private_key);
     void _show_public_key();
+
+  private:
+
+    //  VARIABLES
+    int _state;
+    HardwareIF* _hardware;
+    bc_num _private_key;
+    bc_num _modulus;
+
+
 
 
 };

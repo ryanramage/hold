@@ -19,10 +19,10 @@
 #define STATE_DISPLAY_DECRYPTED_CONTENT 17
 #define STATE_POWER_OFF 18;
 
-#define BETWEEN_TONES_TIMEOUT_SEC = 1
-#define POWER_OFF_TIMEOUT_SEC = 20
-#define SHOW_ERROR_SEC = 5
-#define SHOW_LONG_MSG_SEC = 20
+#define BETWEEN_TONES_TIMEOUT_SEC 1
+#define POWER_OFF_TIMEOUT_SEC 20
+#define SHOW_ERROR_SEC 5
+#define SHOW_LONG_MSG_SEC 20
 
 
 HoldState::HoldState() {
@@ -44,34 +44,25 @@ void HoldState::init(HardwareIF* hardware){
 void HoldState::_waiting(){
   _state = STATE_WAITING;
   _hardware->LCD_msg(MSG_WAITING);
-  // _hardware->wait_for_codepacket_or_button_or_timeout(
-  //   _on_encrypted_msg_error,             // on error
-  //   _on_encrypted_msg,                   // on codepacket
-  //   _show_public_key,                    // on button
-  //   _power_off, POWER_OFF_TIMEOUT_SEC    // on timeout
-  // );
+  _hardware->wait_for_packet_or_button_or_timeout(this, POWER_OFF_TIMEOUT_SEC);
 }
 
 void HoldState::_no_private_key(){
   _state = STATE_NO_PRIVATE_KEY;
   _hardware->LCD_msg(MSG_NO_PRIVATE_KEY);
-  // _hardware->wait_for_codepacket_or_button_or_timeout(
-  //   _on_private_key_error,               // on error
-  //   _on_private_key,                     // on codepacket
-  //   _power_off,                          // on button
-  //   _power_off, POWER_OFF_TIMEOUT_SEC);  // in timeout
+  _hardware->wait_for_private_key_or_button_or_timeout(this, POWER_OFF_TIMEOUT_SEC);
 }
 
 void HoldState::_power_off(){
   _state = STATE_POWER_OFF;
   _hardware->LCD_msg(MSG_POWER_OFF);
-  // _hardware->power_off();
+  _hardware->power_off();
 }
 
 void HoldState::_on_encrypted_msg_error(char* error){
   _state = STATE_MSG_ERROR;
   _hardware->LCD_msg(MSG_DECRYPTION_ERROR);
-  // _hardware->button_or_timeout(_waiting, SHOW_ERROR_SEC);
+  _hardware->button_or_timeout(this, CALLBACK_WAITING, SHOW_ERROR_SEC);
 }
 
 void HoldState::_on_encrypted_msg(char* msg) {
@@ -91,7 +82,7 @@ void HoldState::_on_encrypted_msg(char* msg) {
 void HoldState::_on_private_key_error(char* error){
   _state = STATE_PRIVATE_KEY_ERROR;
   _hardware->LCD_msg(MSG_PRIVATE_KEY_ERROR);
-  // _hardware->button_or_timeout(_no_private_key, SHOW_ERROR_SEC);
+  _hardware->button_or_timeout(this, CALLBACK_NO_PRIVATE_KEY,  SHOW_ERROR_SEC);
 }
 
 void HoldState::_on_private_key(unsigned short n_len, char* private_key) {
@@ -102,7 +93,7 @@ void HoldState::_on_private_key(unsigned short n_len, char* private_key) {
 
 void HoldState::_show_public_key(){
   _state = STATE_DISPLAY_PUBLIC_KEY;
-  // _hardware->LCD_display_public_key(bc_num key);
+  //_hardware->LCD_display_public_key(bc_num key);
   // _hardware->button_or_timeout(_waiting, SHOW_LONG_MSG_SEC);
 }
 
