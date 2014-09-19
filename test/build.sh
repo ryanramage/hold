@@ -1,1 +1,1 @@
-gcc -lstdc++ -Wall -g ../lib/HoldState/HoldState.cpp ../lib/HoldState/MockArduino.cpp ../lib/HoldState/HardwareIF.cpp ../lib/BigNumber/number.c ../lib/BigNumber/BigNumber.cpp  runtests.cpp  -o myprogram
+gcc -lstdc++ -Wall -g ../lib/HoldState/HoldState.cpp lib/MockArduino/MockArduino.cpp ../lib/HoldState/HardwareIF.cpp ../lib/BigNumber/number.c ../lib/BigNumber/BigNumber.cpp  runtests.cpp  -o myprogram

@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "../lib/HoldState/HoldState.h"
-#include "../lib/HoldState/MockArduino.h"
+#include "lib/MockArduino/MockArduino.h"
 
 MockArduino hw;
 HoldState state;

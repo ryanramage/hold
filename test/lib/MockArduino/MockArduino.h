@@ -3,8 +3,8 @@
 #define _MOCK_ARDUINO_
 
 
-#include "HardwareIF.h"
-#include "HoldState.h"
+#include "../../../lib/HoldState/HardwareIF.h"
+#include "../../../lib/HoldState/HoldState.h"
 
 class MockArduino : public HardwareIF {
 
