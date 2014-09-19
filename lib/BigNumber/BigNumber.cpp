@@ -96,13 +96,13 @@ BigNumber::operator long () const
 } // end of BigNumber::operator long
 
 // Allow Arduino's Serial.print() to print BigNumber objects!
-size_t BigNumber::printTo(Print& p) const
-{
-  char *buf = bc_num2str(num_);
-  size_t len = p.write(buf);
-  free(buf);
-  return len;
-}
+// size_t BigNumber::printTo(Print& p) const
+// {
+//   char *buf = bc_num2str(num_);
+//   size_t len = p.write(buf);
+//   free(buf);
+//   return len;
+// }
 
 // add
 BigNumber & BigNumber::operator+= (const BigNumber & n)

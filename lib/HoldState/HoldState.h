@@ -1,8 +1,9 @@
 #ifndef _HOLD_STATE_
 #define _HOLD_STATE_
 
+
+#include "../BigNumber/BigNumber.h"
 #include "HardwareIF.h"
-#include "../BigNumber/number.h"
 
 class HoldState {
 
@@ -10,11 +11,24 @@ class HoldState {
 
     HoldState();
     void init(HardwareIF* hardware);
-    void setPrivateKey(unsigned short key_length, char* n_ptr);
-    bc_num getPrivateKey();
+    void setPrivateKey(BigNumber key);
+    BigNumber getPrivateKey();
     int getState();
 
-    // state changes...prob should not be public...
+    // called backs from the hardware
+    void _on_packet(char *packet);
+    void _on_button();
+    void _on_timeout();
+
+  private:
+
+    //  VARIABLES
+    int _state;
+    HardwareIF* _hardware;
+    BigNumber* _private_key;
+    BigNumber* _modulus;
+
+    // state changes...
     void _waiting();
     void _no_private_key();
     void _power_off();
@@ -23,16 +37,6 @@ class HoldState {
     void _on_private_key_error(char* error);
     void _on_private_key(unsigned short n_len, char* private_key);
     void _show_public_key();
-
-  private:
-
-    //  VARIABLES
-    int _state;
-    HardwareIF* _hardware;
-    bc_num _private_key;
-    bc_num _modulus;
-
-
 
 
 };

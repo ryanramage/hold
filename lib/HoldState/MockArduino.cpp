@@ -32,15 +32,12 @@ void MockArduino::LCD_msg(unsigned char msg_num) {
   if (msg_num == MSG_PRIVATE_KEY_ERROR ) printf("Private Key Problem\n");
 }
 
-void MockArduino::wait_for_private_key_or_button_or_timeout(HoldState* holdstate, int timeout){
-  holdstate->_power_off();
-}
 
 void MockArduino::power_off(){
   printf("HARDWARE OFF\n");
 }
 
-void MockArduino::button_or_timeout(HoldState* holdstate, char callback, int timeout) {
+void MockArduino::button_or_timeout(HoldState* holdstate, int timeout) {
 
 }
 

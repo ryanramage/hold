@@ -1,8 +1,9 @@
+
 #include "HoldState.h"
 #include "HardwareIF.h"
 #include "LCDMessages.h"
 #include <stdlib.h>
-#include "../BigNumber/number.h"
+
 
 #define MODULUS "3594340021"
 
@@ -27,6 +28,9 @@
 
 HoldState::HoldState() {
   _state = 0;
+
+  BigNumber modulus = MODULUS;
+  _modulus = &modulus;
 }
 
 int HoldState::getState() {
@@ -50,7 +54,7 @@ void HoldState::_waiting(){
 void HoldState::_no_private_key(){
   _state = STATE_NO_PRIVATE_KEY;
   _hardware->LCD_msg(MSG_NO_PRIVATE_KEY);
-  _hardware->wait_for_private_key_or_button_or_timeout(this, POWER_OFF_TIMEOUT_SEC);
+  _hardware->wait_for_packet_or_button_or_timeout(this, POWER_OFF_TIMEOUT_SEC);
 }
 
 void HoldState::_power_off(){
@@ -62,7 +66,7 @@ void HoldState::_power_off(){
 void HoldState::_on_encrypted_msg_error(char* error){
   _state = STATE_MSG_ERROR;
   _hardware->LCD_msg(MSG_DECRYPTION_ERROR);
-  _hardware->button_or_timeout(this, CALLBACK_WAITING, SHOW_ERROR_SEC);
+  _hardware->button_or_timeout(this, SHOW_ERROR_SEC);
 }
 
 void HoldState::_on_encrypted_msg(char* msg) {
@@ -79,10 +83,16 @@ void HoldState::_on_encrypted_msg(char* msg) {
 }
 
 
+void HoldState::_on_packet(char *packet){}
+void HoldState::_on_button(){}
+void HoldState::_on_timeout(){}
+
+
+
 void HoldState::_on_private_key_error(char* error){
   _state = STATE_PRIVATE_KEY_ERROR;
   _hardware->LCD_msg(MSG_PRIVATE_KEY_ERROR);
-  _hardware->button_or_timeout(this, CALLBACK_NO_PRIVATE_KEY,  SHOW_ERROR_SEC);
+  _hardware->button_or_timeout(this, SHOW_ERROR_SEC);
 }
 
 void HoldState::_on_private_key(unsigned short n_len, char* private_key) {
@@ -98,53 +108,55 @@ void HoldState::_show_public_key(){
 }
 
 void set_private_key(HardwareIF* hardware, unsigned short n_len, char* n_ptr) {
-  int MAX_SIZE = hardware->EEPROM_max_size();
-  int cur_eeprom_address = 0; // make sure we are at the base
-  hardware->EEPROM_write(cur_eeprom_address++, PRIVATE_KEY_SET);
+  // int MAX_SIZE = hardware->EEPROM_max_size();
+  // int cur_eeprom_address = 0; // make sure we are at the base
+  // hardware->EEPROM_write(cur_eeprom_address++, PRIVATE_KEY_SET);
 
-  // we should check hardware max size
-  if ((n_len + 3) > MAX_SIZE) return;
+  // // we should check hardware max size
+  // if ((n_len + 3) > MAX_SIZE) return;
 
-  // write the n_len int as two bytes
-  unsigned char * p_int = (unsigned char *)&n_len;
-  hardware->EEPROM_write(cur_eeprom_address++, p_int[0]);
-  hardware->EEPROM_write(cur_eeprom_address++, p_int[1]);
+  // // write the n_len int as two bytes
+  // unsigned char * p_int = (unsigned char *)&n_len;
+  // hardware->EEPROM_write(cur_eeprom_address++, p_int[0]);
+  // hardware->EEPROM_write(cur_eeprom_address++, p_int[1]);
 
-  int current_key_char;
-  for (current_key_char = 0; current_key_char < n_len; current_key_char++){
-    hardware->EEPROM_write(cur_eeprom_address++, n_ptr[current_key_char]);
-  }
+  // int current_key_char;
+  // for (current_key_char = 0; current_key_char < n_len; current_key_char++){
+  //   hardware->EEPROM_write(cur_eeprom_address++, n_ptr[current_key_char]);
+  // }
 
 }
 
 
-bc_num get_private_key(HardwareIF* hardware) {
+// BigNumber get_private_key(HardwareIF* hardware) {
 
-  int cur_eeprom_address = 1; // start at the bytes for the n_len
+//   // int cur_eeprom_address = 1; // start at the bytes for the n_len
 
-  bc_num temp;
+//   // bc_num temp;
 
-  temp = (bc_num) malloc (sizeof(bc_struct));
-  temp->n_sign = PLUS;
-  temp->n_refs = 1;
-  temp->n_scale = 0;
+//   // temp = (bc_num) malloc (sizeof(bc_struct));
+//   // temp->n_sign = PLUS;
+//   // temp->n_refs = 1;
+//   // temp->n_scale = 0;
 
-  // read the n_len int as two bytes
+//   // // read the n_len int as two bytes
 
-  unsigned char *p_int = (unsigned char *)&temp->n_len;
-  p_int[0] = hardware->EEPROM_read(cur_eeprom_address++);
-  p_int[1] = hardware->EEPROM_read(cur_eeprom_address++);
+//   // unsigned char *p_int = (unsigned char *)&temp->n_len;
+//   // p_int[0] = hardware->EEPROM_read(cur_eeprom_address++);
+//   // p_int[1] = hardware->EEPROM_read(cur_eeprom_address++);
 
-  temp->n_ptr = (char *) malloc (temp->n_len);
-  int current_key_char;
+//   // temp->n_ptr = (char *) malloc (temp->n_len);
+//   // int current_key_char;
 
-  for (current_key_char = 0; current_key_char < temp->n_len; current_key_char++){
-    temp->n_ptr[current_key_char] = hardware->EEPROM_read(cur_eeprom_address++);
-  }
-  temp->n_value = temp->n_ptr;
+//   // for (current_key_char = 0; current_key_char < temp->n_len; current_key_char++){
+//   //   temp->n_ptr[current_key_char] = hardware->EEPROM_read(cur_eeprom_address++);
+//   // }
+//   // temp->n_value = temp->n_ptr;
 
-  return temp;
-}
+//   // return temp;
+//   BigNumber fact = 1;
+//   return fact;
+// }
 
 
 
