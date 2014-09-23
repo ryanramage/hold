@@ -9,3 +9,7 @@ debug.txt
 .ycm_extra_conf.pyc
 test/.build
 test/.deps
+test/myprogram
+test/myprogram.dSYM
+.build
+.deps
