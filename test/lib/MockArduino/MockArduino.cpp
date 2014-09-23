@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <csignal>
 #include <unistd.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <vector>
 #include "MockArduino.h"
 #include "../../../lib/HoldState/LCDMessages.h"
 
@@ -9,6 +12,7 @@ HoldState* _handler;
 volatile int pending = 0;
 
 void signalHandler( int signum ){
+  if (!pending) return;
   pending = 0;
   _handler->_on_button();
 }
@@ -59,10 +63,71 @@ void MockArduino::button_or_timeout(HoldState* holdstate, int timeout) {
   if (pending == 1) holdstate->_on_timeout();
 }
 
+bool is_valid_packet(std::vector<char> v){
+  int packet = v.size();
+  if (packet < 3) return false;
+  if ((char)v[0] != '#') throw 22;
+  if ((char)v[packet-1] != '*') throw 22;
+  return true;
+}
+
+bool valid_char(char key) {
+  if (key == 'A') return true;
+  if (key == 'B') return true;
+  if (key == 'C') return true;
+  if (key == 'D') return true;
+  if (key == '1') return true;
+  if (key == '2') return true;
+  if (key == '3') return true;
+  if (key == '4') return true;
+  if (key == '5') return true;
+  if (key == '6') return true;
+  if (key == '7') return true;
+  if (key == '8') return true;
+  if (key == '9') return true;
+  if (key == '0') return true;
+  if (key == '#') return true;
+  if (key == '*') return true;
+  return false;
+}
+
 void MockArduino::wait_for_packet_or_button_or_timeout(HoldState* holdstate, int timeout) {
   _handler = holdstate;
-  pending = 1;
-  sleep(timeout );
-  if (pending == 1) holdstate->_on_timeout();
+
+  std::vector<char> buffer;
+  fd_set readfs;
+  struct timeval tout;
+  int res, key;
+  int fire_timeout = timeout * 1000;
+  int current_time = 0;
+  while (1) {
+     FD_SET(0, &readfs);  /* 0 is STDIN */
+     tout.tv_usec = 1000;  /* 1 milliseconds */
+     tout.tv_sec  = 0;  /* seconds */
+     pending = 1;
+     res = select(1, &readfs, NULL, NULL, &tout);
+     pending = 0;
+     current_time += 1; // add 1 milli
+     if (current_time > fire_timeout) return _handler->_on_button();
+
+     if (res) {
+        /* key pressed */
+        key = getchar();
+        buffer.push_back(key);
+        while (valid_char(key)) {
+          key = getchar();
+          buffer.push_back(key);
+        }
+        // remove the last one, as its a line feed
+        buffer.pop_back();
+        try {
+         if (is_valid_packet(buffer)) return _handler->_on_packet(reinterpret_cast<char*> (&buffer[0]));
+        } catch(...) {
+          _handler->_on_error();
+        }
+     }
+
+  }
+
 }
 

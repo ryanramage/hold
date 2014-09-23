@@ -19,6 +19,7 @@ class HoldState {
     void _on_packet(char *packet);
     void _on_button();
     void _on_timeout();
+    void _on_error();
 
   private:
 
@@ -32,9 +33,9 @@ class HoldState {
     void _waiting();
     void _no_private_key();
     void _power_off();
-    void _on_encrypted_msg_error(char* error);
+    void _on_encrypted_msg_error();
     void _on_encrypted_msg(char* msg);
-    void _on_private_key_error(char* error);
+    void _on_private_key_error();
     void _on_private_key(unsigned short n_len, char* private_key);
     void _show_public_key();
 

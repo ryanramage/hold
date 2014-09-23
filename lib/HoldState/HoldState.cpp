@@ -22,7 +22,7 @@
 
 #define BETWEEN_TONES_TIMEOUT_SEC 1
 #define POWER_OFF_TIMEOUT_SEC 20
-#define SHOW_ERROR_SEC 5
+#define SHOW_ERROR_SEC 2
 #define SHOW_LONG_MSG_SEC 20
 
 
@@ -63,7 +63,7 @@ void HoldState::_power_off(){
   _hardware->power_off();
 }
 
-void HoldState::_on_encrypted_msg_error(char* error){
+void HoldState::_on_encrypted_msg_error(){
   _state = STATE_MSG_ERROR;
   _hardware->LCD_msg(MSG_DECRYPTION_ERROR);
   _hardware->button_or_timeout(this, SHOW_ERROR_SEC);
@@ -83,18 +83,26 @@ void HoldState::_on_encrypted_msg(char* msg) {
 }
 
 
-void HoldState::_on_packet(char *packet){}
+void HoldState::_on_packet(char *packet){
+  _hardware->LCD_msg(MSG_PROCESSING);
+}
 void HoldState::_on_button(){
+  if (_state == STATE_PRIVATE_KEY_ERROR) this->_no_private_key();
   if (_state == STATE_NO_PRIVATE_KEY) this->_power_off();
 }
 void HoldState::_on_timeout(){
+  if (_state == STATE_PRIVATE_KEY_ERROR) this->_no_private_key();
   if (_state == STATE_WAITING) this->_power_off();
   if (_state == STATE_NO_PRIVATE_KEY) this->_power_off();
 }
 
+void HoldState::_on_error(){
+  if (_state == STATE_WAITING) this->_on_encrypted_msg_error();
+  if (_state == STATE_NO_PRIVATE_KEY) this->_on_private_key_error();
+}
 
 
-void HoldState::_on_private_key_error(char* error){
+void HoldState::_on_private_key_error(){
   _state = STATE_PRIVATE_KEY_ERROR;
   _hardware->LCD_msg(MSG_PRIVATE_KEY_ERROR);
   _hardware->button_or_timeout(this, SHOW_ERROR_SEC);
