@@ -45,6 +45,14 @@ This is an open source hardware/software project.
 
 The full procedure is detailed in [INSTALL.md](./INSTALL.md).
 
+## Hardware
+
+Here is a VERY ROUGH fritzing diagram of what it will look like. Dont build this, as I dont have
+all the pieces in place yet.
+
+![Hold Sketch](/hold_bb.png "Hold Skectch")
+
+
 ## Bugs
 
 If you encounter some issues while using the [Hold](https://github.com/ryanramage/hold), please first report the issue [here in this repo issue tracker](https://github.com/ryanramage/hold/issues).
