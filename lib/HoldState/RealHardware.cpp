@@ -1,7 +1,7 @@
 #include <Arduino.h>
 // http://forum.arduino.cc/index.php/topic,49250.0.html
 #include <../../../../libraries/EEPROM/EEPROM.h>
-#include <../../../../libraries/LiquidCrystal/LiquidCrystal.h>
+//#include <../../../../libraries/LiquidCrystal/LiquidCrystal.h>
 #include "./RealHardware.h"
 #include "./LCDMessages.h"
 
@@ -38,7 +38,7 @@ const char* LCD_PROCESSING = "Processing";
 const char* LCD_PRIVATE_KEY_ERROR = "Private Key Error";
 
 
-LiquidCrystal lcd(LCD_RS_PIN, LCD_E_PIN, LCD_D4_PIN, LCD_D5_PIN, LCD_D6_PIN, LCD_D7_PIN);
+//LiquidCrystal lcd(LCD_RS_PIN, LCD_E_PIN, LCD_D4_PIN, LCD_D5_PIN, LCD_D6_PIN, LCD_D7_PIN);
 
 volatile int button_pressed = 0;
 volatile int tone_received = 0;
@@ -71,8 +71,8 @@ RealHardware::RealHardware() {
 
   attachInterrupt(0, on_button, RISING);
   attachInterrupt(1, on_tone, RISING);
-  Serial.begin(9600);
-  lcd.begin(16, 2);
+  //Serial.begin(9600);
+  //lcd.begin(16, 2);
 }
 
 char RealHardware::EEPROM_read(int address) const {
@@ -91,7 +91,7 @@ int  RealHardware::EEPROM_max_size() const {
 
 void print_everywhere(const char* msg) {
   Serial.println(msg);
-  lcd.print(msg);
+  //lcd.print(msg);
 }
 
 void RealHardware::LCD_msg(unsigned char msg_num) {
@@ -101,6 +101,10 @@ void RealHardware::LCD_msg(unsigned char msg_num) {
   if (msg_num == MSG_DECRYPTION_ERROR)   print_everywhere(LCD_DECRYPTION_ERROR);
   if (msg_num == MSG_PROCESSING)         print_everywhere(LCD_PROCESSING);
   if (msg_num == MSG_PRIVATE_KEY_ERROR ) print_everywhere(LCD_PRIVATE_KEY_ERROR);
+}
+
+void RealHardware::LCD_display_public_key(BigNumber* modulus){
+
 }
 
 void RealHardware::power_off(){
@@ -133,11 +137,12 @@ char what_char(byte tone){
     case B00001010: return '0';
     case B00001011: return '*';
     case B00001100: return '#';
-    case B00001101: return 'A';
-    case B00001110: return 'B';
-    case B00001111: return 'C';
-    case B00000000: return 'D';
+    case B00001101: return 'a';
+    case B00001110: return 'b';
+    case B00001111: return 'c';
+    case B00000000: return 'd';
   }
+  return 'E';
 }
 
 
@@ -166,7 +171,7 @@ void RealHardware::wait_for_packet_or_button_or_timeout(HoldState* holdstate, in
     // we have just got a tone
     packet[last_packet++] = what_char(last_tone);
     timeout_ends = millis() + PACKET_TIMEOUT_MS; // MAX seconds between TONES
-    // clear
+    // clear dsa
 
     // inner do is super short so we catch the result of the interrupt
     do {

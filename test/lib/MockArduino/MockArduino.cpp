@@ -8,13 +8,14 @@
 #include "MockArduino.h"
 #include "../../../lib/HoldState/LCDMessages.h"
 
+
+#define MICRO_WAIT 1
+
 HoldState* _handler;
-volatile int pending = 0;
+volatile bool pressed = false;
 
 void signalHandler( int signum ){
-  if (!pending) return;
-  pending = 0;
-  _handler->_on_button();
+  pressed = true;
 }
 
 
@@ -50,6 +51,11 @@ void MockArduino::LCD_msg(unsigned char msg_num) {
   if (msg_num == MSG_PRIVATE_KEY_ERROR ) printf("Private Key Problem\n");
 }
 
+void MockArduino::LCD_display_public_key(BigNumber* modulus){
+  printf("public key\n");
+  printf("%s\n", modulus->toString());
+}
+
 
 void MockArduino::power_off(){
   printf("HARDWARE OFF\n");
@@ -58,9 +64,17 @@ void MockArduino::power_off(){
 
 void MockArduino::button_or_timeout(HoldState* holdstate, int timeout) {
   _handler = holdstate;
-  pending = 1;
-  sleep(timeout);
-  if (pending == 1) holdstate->_on_timeout();
+  int waited_time = 0;
+  do {
+    sleep(MICRO_WAIT);
+    if (pressed) {
+      pressed = false;
+      return holdstate->_on_button();
+    }
+    waited_time += MICRO_WAIT;
+  } while(waited_time < timeout);
+  return holdstate->_on_timeout();
+
 }
 
 bool is_valid_packet(std::vector<char> v){
@@ -72,10 +86,10 @@ bool is_valid_packet(std::vector<char> v){
 }
 
 bool valid_char(char key) {
-  if (key == 'A') return true;
-  if (key == 'B') return true;
-  if (key == 'C') return true;
-  if (key == 'D') return true;
+  if (key == 'a') return true;
+  if (key == 'b') return true;
+  if (key == 'c') return true;
+  if (key == 'd') return true;
   if (key == '1') return true;
   if (key == '2') return true;
   if (key == '3') return true;
@@ -104,11 +118,15 @@ void MockArduino::wait_for_packet_or_button_or_timeout(HoldState* holdstate, int
      FD_SET(0, &readfs);  /* 0 is STDIN */
      tout.tv_usec = 1000;  /* 1 milliseconds */
      tout.tv_sec  = 0;  /* seconds */
-     pending = 1;
+
      res = select(1, &readfs, NULL, NULL, &tout);
-     pending = 0;
+     if (pressed) {
+      pressed = false;
+      return holdstate->_on_button();
+     }
+
      current_time += 1; // add 1 milli
-     if (current_time > fire_timeout) return _handler->_on_button();
+     if (current_time > fire_timeout) return _handler->_on_timeout();
 
      if (res) {
         /* key pressed */

@@ -12,5 +12,6 @@ int main(){
   state.init(&hw);
   s = state.getState();
   //printf("%d\n", s);
-  hw.simulateMessage("#*#3282932374283238329*#*");
+  hw.simulateMessage("#2#3232*"); // sign 3232
+
 }

@@ -40,33 +40,33 @@ int HoldState::getState() {
 void HoldState::init(HardwareIF* hardware){
   _hardware = hardware;
   char check_byte = this->_hardware->EEPROM_read(EEPROM_BASE_ADDRESS);
-  if (check_byte != PRIVATE_KEY_SET) _no_private_key();
-  else _waiting();
+  if (check_byte != PRIVATE_KEY_SET) return _no_private_key();
+  else return _waiting();
 }
 
 
 void HoldState::_waiting(){
   _state = STATE_WAITING;
   _hardware->LCD_msg(MSG_WAITING);
-  _hardware->wait_for_packet_or_button_or_timeout(this, POWER_OFF_TIMEOUT_SEC);
+  return _hardware->wait_for_packet_or_button_or_timeout(this, POWER_OFF_TIMEOUT_SEC);
 }
 
 void HoldState::_no_private_key(){
   _state = STATE_NO_PRIVATE_KEY;
   _hardware->LCD_msg(MSG_NO_PRIVATE_KEY);
-  _hardware->wait_for_packet_or_button_or_timeout(this, POWER_OFF_TIMEOUT_SEC);
+  return _hardware->wait_for_packet_or_button_or_timeout(this, POWER_OFF_TIMEOUT_SEC);
 }
 
 void HoldState::_power_off(){
   _state = STATE_POWER_OFF;
   _hardware->LCD_msg(MSG_POWER_OFF);
-  _hardware->power_off();
+  return _hardware->power_off();
 }
 
 void HoldState::_on_encrypted_msg_error(){
   _state = STATE_MSG_ERROR;
   _hardware->LCD_msg(MSG_DECRYPTION_ERROR);
-  _hardware->button_or_timeout(this, SHOW_ERROR_SEC);
+  return _hardware->button_or_timeout(this, SHOW_ERROR_SEC);
 }
 
 void HoldState::_on_encrypted_msg(char* msg) {
@@ -85,20 +85,54 @@ void HoldState::_on_encrypted_msg(char* msg) {
 
 void HoldState::_on_packet(char *packet){
   _hardware->LCD_msg(MSG_PROCESSING);
+  int mode = packet[1] - '0';
+
+
+  if (_state == STATE_NO_PRIVATE_KEY && mode == 0) {
+    char* modulus = &packet[3];
+    char* private_key;
+
+    unsigned short length=0;
+    unsigned short modulus_length = 0;
+    unsigned short private_key_length = 0;
+    bool found_pk = false;
+
+    do {
+      // lengths
+      length++;
+      if (!found_pk) modulus_length++;
+      else private_key_length++;
+
+      if (modulus[ length ] == 'c') {
+        modulus[ length ] = '\0';
+        private_key = &modulus[++length];
+        found_pk = true;
+      }
+
+    } while(modulus[ length ] != '*' && length < 5000);
+
+    // replace the * with a null
+    modulus[length] = '\0';
+    this->_on_private_key(modulus_length, modulus, private_key_length, private_key);
+  }
+
 }
 void HoldState::_on_button(){
-  if (_state == STATE_PRIVATE_KEY_ERROR) this->_no_private_key();
-  if (_state == STATE_NO_PRIVATE_KEY) this->_power_off();
+  if (_state == STATE_PRIVATE_KEY_ERROR) return this->_no_private_key();
+  if (_state == STATE_NO_PRIVATE_KEY) return this->_power_off();
+  if (_state == STATE_WAITING) return this->_show_public_key();
+  if (_state == STATE_DISPLAY_PUBLIC_KEY) return this->_waiting();
 }
 void HoldState::_on_timeout(){
-  if (_state == STATE_PRIVATE_KEY_ERROR) this->_no_private_key();
-  if (_state == STATE_WAITING) this->_power_off();
-  if (_state == STATE_NO_PRIVATE_KEY) this->_power_off();
+  if (_state == STATE_PRIVATE_KEY_ERROR) return this->_no_private_key();
+  if (_state == STATE_WAITING) return this->_power_off();
+  if (_state == STATE_NO_PRIVATE_KEY) return this->_power_off();
+  if (_state == STATE_DISPLAY_PUBLIC_KEY) return this->_waiting();
 }
 
 void HoldState::_on_error(){
-  if (_state == STATE_WAITING) this->_on_encrypted_msg_error();
-  if (_state == STATE_NO_PRIVATE_KEY) this->_on_private_key_error();
+  if (_state == STATE_WAITING) return this->_on_encrypted_msg_error();
+  if (_state == STATE_NO_PRIVATE_KEY) return this->_on_private_key_error();
 }
 
 
@@ -108,35 +142,43 @@ void HoldState::_on_private_key_error(){
   _hardware->button_or_timeout(this, SHOW_ERROR_SEC);
 }
 
-void HoldState::_on_private_key(unsigned short n_len, char* private_key) {
-  // set_private_key(_hardware, n_len, private_key);
-
+void HoldState::_on_private_key(unsigned short modulus_length, char* modulus, unsigned short private_key_length, char* private_key) {
+  this->set_private_key(modulus_length, modulus, private_key_length, private_key);
+  BigNumber pk  = BigNumber(private_key);
+  BigNumber mod = BigNumber(modulus);
+  this->_private_key = &pk;
+  this->_modulus = &mod;
+  return this->_show_public_key();
 }
 
 
 void HoldState::_show_public_key(){
   _state = STATE_DISPLAY_PUBLIC_KEY;
-  //_hardware->LCD_display_public_key(bc_num key);
-  // _hardware->button_or_timeout(_waiting, SHOW_LONG_MSG_SEC);
+  _hardware->LCD_display_public_key(this->_modulus);
+  return _hardware->button_or_timeout(this, SHOW_LONG_MSG_SEC);
 }
 
-void set_private_key(HardwareIF* hardware, unsigned short n_len, char* n_ptr) {
-  // int MAX_SIZE = hardware->EEPROM_max_size();
-  // int cur_eeprom_address = 0; // make sure we are at the base
-  // hardware->EEPROM_write(cur_eeprom_address++, PRIVATE_KEY_SET);
+void HoldState::set_private_key(unsigned short modulus_length, char* modulus, unsigned short private_key_length, char* private_key) {
+  int MAX_SIZE = this->_hardware->EEPROM_max_size();
+  int cur_eeprom_address = 0; // make sure we are at the base
+  this->_hardware->EEPROM_write(cur_eeprom_address++, PRIVATE_KEY_SET);
 
-  // // we should check hardware max size
-  // if ((n_len + 3) > MAX_SIZE) return;
+  // we should check _hardware max size
+  if ((modulus_length + private_key_length + 3) > MAX_SIZE) return;
 
-  // // write the n_len int as two bytes
-  // unsigned char * p_int = (unsigned char *)&n_len;
-  // hardware->EEPROM_write(cur_eeprom_address++, p_int[0]);
-  // hardware->EEPROM_write(cur_eeprom_address++, p_int[1]);
+  // write the modulus_length first, then pk length
+  this->_hardware->EEPROM_write(cur_eeprom_address++, modulus_length);
+  this->_hardware->EEPROM_write(cur_eeprom_address++, private_key_length);
 
-  // int current_key_char;
-  // for (current_key_char = 0; current_key_char < n_len; current_key_char++){
-  //   hardware->EEPROM_write(cur_eeprom_address++, n_ptr[current_key_char]);
-  // }
+  int current_char;
+  for (current_char = 0; current_char < modulus_length; current_char++){
+    this->_hardware->EEPROM_write(cur_eeprom_address++, modulus[current_char]);
+  }
+
+  for (current_char = 0; current_char < private_key_length; current_char++){
+    this->_hardware->EEPROM_write(cur_eeprom_address++, private_key[current_char]);
+  }
+
 
 }
 

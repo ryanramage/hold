@@ -28,6 +28,7 @@ class HoldState {
     HardwareIF* _hardware;
     BigNumber* _private_key;
     BigNumber* _modulus;
+    BigNumber* _public_exponent;
 
     // state changes...
     void _waiting();
@@ -36,9 +37,10 @@ class HoldState {
     void _on_encrypted_msg_error();
     void _on_encrypted_msg(char* msg);
     void _on_private_key_error();
-    void _on_private_key(unsigned short n_len, char* private_key);
+    void _on_private_key(unsigned short modulus_length, char* modulus, unsigned short private_key_length, char* private_key);
     void _show_public_key();
 
+    void set_private_key(unsigned short modulus_length, char* modulus, unsigned short private_key_length, char* private_key);
 
 };
 
