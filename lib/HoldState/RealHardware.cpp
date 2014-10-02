@@ -9,6 +9,7 @@
 #define BUTTON_PIN   2 // interrupt pin. Maps to interrupt 0 on arduino.
 #define SHUTDOWN_PIN 6
 
+#define UNCONNECTED_PIN A5
 
 #define HT9170B_PIN_DV 3  // interrupt pin. Maps to interrupt 1 on arduino.
 // use analog pins to free up some pins
@@ -107,6 +108,13 @@ void RealHardware::LCD_display_public_key(BigNumber* modulus){
 
 }
 
+void RealHardware::LCD_display_roll(char* rolls, BigNumber* signature){
+
+}
+void RealHardware::LCD_display_signature(BigNumber* signature){
+
+}
+
 void RealHardware::power_off(){
   // this unlatches the latch circuit
   digitalWrite(SHUTDOWN_PIN, LOW);
@@ -187,5 +195,8 @@ void RealHardware::wait_for_packet_or_button_or_timeout(HoldState* holdstate, in
   //holdstate->_on_packet(*packet);
 }
 
+int RealHardware::random_seed(){
+  return analogRead(UNCONNECTED_PIN);
+}
 
 

@@ -7,7 +7,7 @@
 #include <vector>
 #include "MockArduino.h"
 #include "../../../lib/HoldState/LCDMessages.h"
-
+#include <time.h>
 
 #define MICRO_WAIT 1
 
@@ -38,8 +38,12 @@ int  MockArduino::EEPROM_max_size() const {
   return 512;
 }
 
-void MockArduino::simulateMessage(const char* msg) {
+int MockArduino::random_seed() {
+  return time(NULL);
+}
 
+void MockArduino::simulateMessage(const char* msg) {
+  printf("Time to simulate\n");
 }
 
 void MockArduino::LCD_msg(unsigned char msg_num) {
@@ -54,6 +58,13 @@ void MockArduino::LCD_msg(unsigned char msg_num) {
 void MockArduino::LCD_display_public_key(BigNumber* modulus){
   printf("public key\n");
   printf("%s\n", modulus->toString());
+}
+
+void MockArduino::LCD_display_roll(char* rolls, BigNumber* signature){
+  printf("%s %s\n", rolls, signature->toString());
+}
+void MockArduino::LCD_display_signature(BigNumber* signature) {
+  printf("%s\n", signature->toString());
 }
 
 

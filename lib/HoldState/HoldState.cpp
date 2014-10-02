@@ -3,7 +3,7 @@
 #include "HardwareIF.h"
 #include "LCDMessages.h"
 #include <stdlib.h>
-
+#include <stdio.h>
 
 #define MODULUS "3594340021"
 
@@ -25,10 +25,14 @@
 #define SHOW_ERROR_SEC 2
 #define SHOW_LONG_MSG_SEC 20
 
+#define PACKET_PRIVATE_KEY 0
+#define PACKET_ENCRYPTED 1
+#define PACKET_TO_SIGN 2
+#define PACKET_ROLL_D10 3
 
 HoldState::HoldState() {
   _state = 0;
-
+  BigNumber::begin ();  // initialize library
   BigNumber modulus = MODULUS;
   _modulus = &modulus;
 }
@@ -39,6 +43,7 @@ int HoldState::getState() {
 
 void HoldState::init(HardwareIF* hardware){
   _hardware = hardware;
+  srand(hardware->random_seed());
   char check_byte = this->_hardware->EEPROM_read(EEPROM_BASE_ADDRESS);
   if (check_byte != PRIVATE_KEY_SET) return _no_private_key();
   else return _waiting();
@@ -82,13 +87,35 @@ void HoldState::_on_encrypted_msg(char* msg) {
   // _hardware->button_or_timeout(_waiting, SHOW_LONG_MSG_SEC);
 }
 
+/* Returns an integer in the range [0, n).
+ *
+ * Uses rand(), and so is affected-by/affects the same seed.
+ */
+int randint(int n) {
+  if ((n - 1) == RAND_MAX) {
+    return rand();
+  } else {
+    // Chop off all of the values that would cause skew...
+    long end = RAND_MAX / n; // truncate skew
+    //assert (end > 0L);
+    end *= n;
+
+    // ... and ignore results from rand() that fall above that limit.
+    // (Worst case the loop condition should succeed 50% of the time,
+    // so we can expect to bail out of this loop pretty quickly.)
+    int r;
+    while ((r = rand()) >= end);
+
+    return r % n;
+  }
+}
 
 void HoldState::_on_packet(char *packet){
   _hardware->LCD_msg(MSG_PROCESSING);
   int mode = packet[1] - '0';
 
 
-  if (_state == STATE_NO_PRIVATE_KEY && mode == 0) {
+  if (_state == STATE_NO_PRIVATE_KEY && mode == PACKET_PRIVATE_KEY) {
     char* modulus = &packet[3];
     char* private_key;
 
@@ -113,8 +140,42 @@ void HoldState::_on_packet(char *packet){
 
     // replace the * with a null
     modulus[length] = '\0';
-    this->_on_private_key(modulus_length, modulus, private_key_length, private_key);
+    return this->_on_private_key(modulus_length, modulus, private_key_length, private_key);
   }
+  if (_state == STATE_WAITING && mode == PACKET_ROLL_D10) {
+
+    int num = atoi(&packet[3]);
+    if (num < 0 || num > 40) return _on_error();
+
+    char* rolls = (char *) malloc (num + 1);
+    int i = 0;
+    for (; i < num; i++){
+      int r = randint(10);
+       sprintf(&rolls[i],"%d",r);
+    }
+    rolls[i] = '\0';
+
+    BigNumber rolls_bn = BigNumber(rolls);
+    BigNumber sig = rolls_bn.powMod(*this->_private_key, *this->_modulus);
+    return this->_show_rolls(rolls, &sig);
+  }
+  if (_state == STATE_WAITING && mode == PACKET_TO_SIGN) {
+    char* message = &packet[3];
+    bool fixed = false;
+    int i = 0;
+    while (!fixed && i++ < 40) {
+      if (message[i] == '*') {
+        message[i] = '\0';
+        fixed = true;
+      }
+    }
+
+    BigNumber to_sign = BigNumber(message);
+    BigNumber sig = to_sign.powMod(*this->_private_key, *this->_modulus);
+    return this->_show_signature(&sig);
+  }
+
+
 
 }
 void HoldState::_on_button(){
@@ -157,6 +218,19 @@ void HoldState::_show_public_key(){
   _hardware->LCD_display_public_key(this->_modulus);
   return _hardware->button_or_timeout(this, SHOW_LONG_MSG_SEC);
 }
+
+void HoldState::_show_rolls(char* rolls, BigNumber* signature){
+  _state = STATE_DISPLAY_PUBLIC_KEY;
+  _hardware->LCD_display_roll(rolls, signature);
+  return _hardware->button_or_timeout(this, SHOW_LONG_MSG_SEC);
+}
+
+void HoldState::_show_signature(BigNumber* signature){
+  _state = STATE_DISPLAY_PUBLIC_KEY;
+  _hardware->LCD_display_signature(signature);
+  return _hardware->button_or_timeout(this, SHOW_LONG_MSG_SEC);
+}
+
 
 void HoldState::set_private_key(unsigned short modulus_length, char* modulus, unsigned short private_key_length, char* private_key) {
   int MAX_SIZE = this->_hardware->EEPROM_max_size();
