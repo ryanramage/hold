@@ -174,7 +174,20 @@ void HoldState::_on_packet(char *packet){
     BigNumber sig = to_sign.powMod(*this->_private_key, *this->_modulus);
     return this->_show_signature(&sig);
   }
-
+  if (_state == STATE_WAITING && mode == PACKET_ENCRYPTED) {
+    char* message = &packet[3];
+    bool fixed = false;
+    int i = 0;
+    while (!fixed && i++ < 40) {
+      if (message[i] == '*') {
+        message[i] = '\0';
+        fixed = true;
+      }
+    }
+    BigNumber to_decrypt = BigNumber(message);
+    BigNumber pt = to_decrypt.powMod(*this->_private_key, *this->_modulus);
+    this->_show_decrypted(&pt);
+  }
 
 
 }
@@ -227,7 +240,13 @@ void HoldState::_show_rolls(char* rolls, BigNumber* signature){
 
 void HoldState::_show_signature(BigNumber* signature){
   _state = STATE_DISPLAY_PUBLIC_KEY;
-  _hardware->LCD_display_signature(signature);
+  _hardware->LCD_display_big_num(signature);
+  return _hardware->button_or_timeout(this, SHOW_LONG_MSG_SEC);
+}
+
+void HoldState::_show_decrypted(BigNumber* num) {
+  _state = STATE_DISPLAY_PUBLIC_KEY;
+  _hardware->LCD_display_big_num(num);
   return _hardware->button_or_timeout(this, SHOW_LONG_MSG_SEC);
 }
 

@@ -19,7 +19,7 @@ class MockArduino : public HardwareIF {
     void LCD_msg(unsigned char msg_num);
     void LCD_display_public_key(BigNumber* modulus);
     void LCD_display_roll(char* rolls, BigNumber* signature);
-    void LCD_display_signature(BigNumber* signature);
+    void LCD_display_big_num(BigNumber* signature);
     virtual void button_or_timeout(HoldState* holdstate, int timeout);
     virtual void wait_for_packet_or_button_or_timeout(HoldState* holdstate, int timeout);
     virtual int random_seed();

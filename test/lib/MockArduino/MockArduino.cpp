@@ -63,7 +63,7 @@ void MockArduino::LCD_display_public_key(BigNumber* modulus){
 void MockArduino::LCD_display_roll(char* rolls, BigNumber* signature){
   printf("%s %s\n", rolls, signature->toString());
 }
-void MockArduino::LCD_display_signature(BigNumber* signature) {
+void MockArduino::LCD_display_big_num(BigNumber* signature) {
   printf("%s\n", signature->toString());
 }
 

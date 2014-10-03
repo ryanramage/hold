@@ -104,7 +104,7 @@ void RealHardware::LCD_msg(unsigned char msg_num) {
   if (msg_num == MSG_PRIVATE_KEY_ERROR ) print_everywhere(LCD_PRIVATE_KEY_ERROR);
 }
 
-void RealHardware::LCD_display_public_key(BigNumber* modulus){
+void RealHardware::LCD_display_big_num(BigNumber* modulus){
 
 }
 

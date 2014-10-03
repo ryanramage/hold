@@ -43,6 +43,7 @@ class HoldState {
     void set_private_key(unsigned short modulus_length, char* modulus, unsigned short private_key_length, char* private_key);
     void _show_rolls(char* rolls, BigNumber* signature);
     void _show_signature(BigNumber* signature);
+    void _show_decrypted(BigNumber* num);
 };
 
 #endif
