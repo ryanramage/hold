@@ -50,7 +50,7 @@ The full procedure is detailed in [INSTALL.md](./INSTALL.md).
 Here is a VERY ROUGH fritzing diagram of what it will look like. Dont build this, as I dont have
 all the pieces in place yet.
 
-![Hold Sketch](/hold_bb.png "Hold Skectch")
+![Hold Sketch](/images/hold_bb.png "Hold Skectch")
 
 
 ## Bugs
