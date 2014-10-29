@@ -104,6 +104,10 @@ void RealHardware::LCD_msg(unsigned char msg_num) {
   if (msg_num == MSG_PRIVATE_KEY_ERROR ) print_everywhere(LCD_PRIVATE_KEY_ERROR);
 }
 
+void RealHardware::LCD_display_public_key(BigNumber* modulus) {
+
+}
+
 void RealHardware::LCD_display_big_num(BigNumber* modulus){
 
 }
@@ -111,9 +115,7 @@ void RealHardware::LCD_display_big_num(BigNumber* modulus){
 void RealHardware::LCD_display_roll(char* rolls, BigNumber* signature){
 
 }
-void RealHardware::LCD_display_signature(BigNumber* signature){
 
-}
 
 void RealHardware::power_off(){
   // this unlatches the latch circuit
