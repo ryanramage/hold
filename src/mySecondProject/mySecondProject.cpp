@@ -1,8 +1,8 @@
 #include <Arduino.h>
 #include "HoldState.h"
 #include "BigNumber.h"
+#include "LiquidCrystal.h"
 #include "RealHardware.h"
-#include <../../../../libraries/LiquidCrystal/LiquidCrystal.h>
 
 RealHardware hw;
 HoldState hold;

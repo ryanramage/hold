@@ -1,9 +1,10 @@
 #include <Arduino.h>
-// http://forum.arduino.cc/index.php/topic,49250.0.html
-#include <../../../../libraries/EEPROM/EEPROM.h>
-//#include <../../../../libraries/LiquidCrystal/LiquidCrystal.h>
+#include <avr/eeprom.h>
+#include <../LiquidCrystal/LiquidCrystal.h>
 #include "./RealHardware.h"
 #include "./LCDMessages.h"
+// http://forum.arduino.cc/index.php/topic,49250.0.html
+
 
 // power control pins
 #define BUTTON_PIN   2 // interrupt pin. Maps to interrupt 0 on arduino.
@@ -39,7 +40,7 @@ const char* LCD_PROCESSING = "Processing";
 const char* LCD_PRIVATE_KEY_ERROR = "Private Key Error";
 
 
-//LiquidCrystal lcd(LCD_RS_PIN, LCD_E_PIN, LCD_D4_PIN, LCD_D5_PIN, LCD_D6_PIN, LCD_D7_PIN);
+LiquidCrystal lcd(LCD_RS_PIN, LCD_E_PIN, LCD_D4_PIN, LCD_D5_PIN, LCD_D6_PIN, LCD_D7_PIN);
 
 volatile int button_pressed = 0;
 volatile int tone_received = 0;
@@ -72,16 +73,18 @@ RealHardware::RealHardware() {
 
   attachInterrupt(0, on_button, RISING);
   attachInterrupt(1, on_tone, RISING);
-  //Serial.begin(9600);
-  //lcd.begin(16, 2);
+  Serial.begin(9600);
+  lcd.begin(16, 2);
 }
 
 char RealHardware::EEPROM_read(int address) const {
-  return EEPROM.read(address);
+  return eeprom_read_byte((unsigned char *) address);
+  //return EEPROM.read(address);
 }
 
 void RealHardware::EEPROM_write(int address, char val) {
-  EEPROM.write(address, val);
+  //EEPROM.write(address, val);
+  eeprom_write_byte((unsigned char *) address, val);
 }
 
 int  RealHardware::EEPROM_max_size() const {
@@ -92,7 +95,7 @@ int  RealHardware::EEPROM_max_size() const {
 
 void print_everywhere(const char* msg) {
   Serial.println(msg);
-  //lcd.print(msg);
+  lcd.print(msg);
 }
 
 void RealHardware::LCD_msg(unsigned char msg_num) {
