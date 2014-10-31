@@ -182,7 +182,10 @@ void RealHardware::wait_for_packet_or_button_or_timeout(HoldState* holdstate, in
   // outer do is to have a timeout, or * as end of packet
   do {
     // we have just got a tone
-    packet[last_packet++] = what_char(last_tone);
+    char tone = what_char(last_tone);
+    Serial.println("tone: ");
+    Serial.println(tone);
+    packet[last_packet++] = tone;
     timeout_ends = millis() + PACKET_TIMEOUT_MS; // MAX seconds between TONES
     // clear dsa
 
@@ -197,7 +200,7 @@ void RealHardware::wait_for_packet_or_button_or_timeout(HoldState* holdstate, in
 
   packet[last_packet++] = what_char(last_tone);
 
-  //holdstate->_on_packet(*packet);
+  holdstate->_on_packet(packet);
 }
 
 int RealHardware::random_seed(){
