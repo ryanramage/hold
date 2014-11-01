@@ -95,6 +95,7 @@ int  RealHardware::EEPROM_max_size() const {
 
 void print_everywhere(const char* msg) {
   Serial.println(msg);
+  lcd.clear();
   lcd.print(msg);
 }
 
@@ -187,6 +188,7 @@ void RealHardware::wait_for_packet_or_button_or_timeout(HoldState* holdstate, in
     Serial.println(tone);
     packet[last_packet++] = tone;
     timeout_ends = millis() + PACKET_TIMEOUT_MS; // MAX seconds between TONES
+    tone_received = 0;
     // clear dsa
 
     // inner do is super short so we catch the result of the interrupt
@@ -199,7 +201,7 @@ void RealHardware::wait_for_packet_or_button_or_timeout(HoldState* holdstate, in
   if (millis() < timeout_ends) return holdstate->_on_error();
 
   packet[last_packet++] = what_char(last_tone);
-
+  tone_received = 0;
   holdstate->_on_packet(packet);
 }
 
