@@ -34,6 +34,10 @@
 #define MAX_PACKET_SIZE  300
 
 
+
+
+// from http://www.arduino.cc/en/Reference/PROGMEM
+// and  http://www.nongnu.org/avr-libc/user-manual/pgmspace.html
 prog_char const string_0[] PROGMEM =  "Waiting...";
 prog_char const string_1[] PROGMEM =  "No Private Key";
 prog_char const string_2[] PROGMEM =  "Powering Off";
@@ -57,14 +61,12 @@ PGM_P const messages[] PROGMEM  =
   string_8
 };
 
-char buffer[16];    // make sure this is large enough for the largest string it must hold
-
 
 LiquidCrystal lcd(LCD_RS_PIN, LCD_E_PIN, LCD_D4_PIN, LCD_D5_PIN, LCD_D6_PIN, LCD_D7_PIN);
 
-volatile int button_pressed = 0;
-volatile int tone_received = 0;
-volatile byte last_tone;
+volatile bool button_pressed = false;
+volatile bool tone_received = false;
+
 volatile uint8_t PIN_D0_VAL = 0x0;
 volatile uint8_t PIN_D1_VAL = 0x0;
 volatile uint8_t PIN_D2_VAL = 0x0;
@@ -72,11 +74,11 @@ volatile uint8_t PIN_D3_VAL = 0x0;
 
 void on_button(){
   // read the button. might not have to because we got called on rise
-  button_pressed = 1;
+  button_pressed = true;
 }
 
 void on_tone(){
-  tone_received = 1;
+  tone_received = true;
   //last_tone = PORTC; // http://www.arduino.cc/en/Reference/PortManipulation
   PIN_D0_VAL = digitalRead(HT9170B_PIN_D0);
   PIN_D1_VAL = digitalRead(HT9170B_PIN_D1);
@@ -103,7 +105,6 @@ RealHardware::RealHardware() {
   //attachInterrupt(0, on_button, RISING);
   attachInterrupt(1, on_tone, RISING);
   //digitalWrite(HT9170B_PIN_OE, LOW);
-  Serial.begin(9600);
   lcd.begin(16, 2);
   digitalWrite(HT9170B_PIN_OE, HIGH);
 }
@@ -125,7 +126,6 @@ int  RealHardware::EEPROM_max_size() const {
 
 
 void print_everywhere(const char* msg) {
-  Serial.println(msg);
   lcd.clear();
   lcd.print(msg);
 }
@@ -179,56 +179,23 @@ void RealHardware::button_or_timeout(HoldState* holdstate, int timeout) {
 }
 
 char what_char(){
-  if (PIN_D0_VAL == HIGH && PIN_D1_VAL == LOW && PIN_D2_VAL == LOW && PIN_D3_VAL == LOW) {
-    return '1';
-  }
-  if (PIN_D0_VAL == LOW && PIN_D1_VAL == HIGH && PIN_D2_VAL == LOW && PIN_D3_VAL == LOW) {
-    return '2';
-  }
-  if (PIN_D0_VAL == HIGH && PIN_D1_VAL == HIGH && PIN_D2_VAL == LOW && PIN_D3_VAL == LOW) {
-    return '3';
-  }
-  if (PIN_D0_VAL == LOW && PIN_D1_VAL == LOW && PIN_D2_VAL == HIGH && PIN_D3_VAL == LOW) {
-    return '4';
-  }
-  if (PIN_D0_VAL == HIGH && PIN_D1_VAL == LOW && PIN_D2_VAL == HIGH && PIN_D3_VAL == LOW) {
-    return '5';
-  }
-  if (PIN_D0_VAL == LOW && PIN_D1_VAL == HIGH && PIN_D2_VAL == HIGH && PIN_D3_VAL == LOW) {
-    return '6';
-  }
-  if (PIN_D0_VAL == HIGH && PIN_D1_VAL == HIGH && PIN_D2_VAL == HIGH && PIN_D3_VAL == LOW) {
-    return '7';
-  }
-  if (PIN_D0_VAL == LOW && PIN_D1_VAL == LOW && PIN_D2_VAL == LOW && PIN_D3_VAL == HIGH) {
-    return '8';
-  }
-  if (PIN_D0_VAL == HIGH && PIN_D1_VAL == LOW && PIN_D2_VAL == LOW && PIN_D3_VAL == HIGH) {
-    return '9';
-  }
-  if (PIN_D0_VAL == LOW && PIN_D1_VAL == HIGH && PIN_D2_VAL == LOW && PIN_D3_VAL == HIGH) {
-    return '0';
-  }
-  if (PIN_D0_VAL == HIGH && PIN_D1_VAL == HIGH && PIN_D2_VAL == LOW && PIN_D3_VAL == HIGH) {
-    return '*';
-  }
-  if (PIN_D0_VAL == LOW && PIN_D1_VAL == LOW && PIN_D2_VAL == HIGH && PIN_D3_VAL == HIGH) {
-    return '#';
-  }
-
-  if (PIN_D0_VAL == HIGH && PIN_D1_VAL == LOW && PIN_D2_VAL == HIGH && PIN_D3_VAL == HIGH) {
-    return 'a';
-  }
-  if (PIN_D0_VAL == LOW && PIN_D1_VAL == HIGH && PIN_D2_VAL == HIGH && PIN_D3_VAL == HIGH) {
-    return 'b';
-  }
-  if (PIN_D0_VAL == HIGH && PIN_D1_VAL == HIGH && PIN_D2_VAL == HIGH && PIN_D3_VAL == HIGH) {
-    return 'c';
-  }
-  if (PIN_D0_VAL == LOW && PIN_D1_VAL == LOW && PIN_D2_VAL == LOW && PIN_D3_VAL == LOW) {
-    return 'd';
-  }
-  return 'E';
+  if (PIN_D3_VAL == LOW  && PIN_D2_VAL == LOW  && PIN_D1_VAL == LOW  && PIN_D0_VAL == HIGH) return '1';
+  if (PIN_D3_VAL == LOW  && PIN_D2_VAL == LOW  && PIN_D1_VAL == HIGH && PIN_D0_VAL == LOW ) return '2';
+  if (PIN_D3_VAL == LOW  && PIN_D2_VAL == LOW  && PIN_D1_VAL == HIGH && PIN_D0_VAL == HIGH) return '3';
+  if (PIN_D3_VAL == LOW  && PIN_D2_VAL == HIGH && PIN_D1_VAL == LOW  && PIN_D0_VAL == LOW ) return '4';
+  if (PIN_D3_VAL == LOW  && PIN_D2_VAL == HIGH && PIN_D1_VAL == LOW  && PIN_D0_VAL == HIGH) return '5';
+  if (PIN_D3_VAL == LOW  && PIN_D2_VAL == HIGH && PIN_D1_VAL == HIGH && PIN_D0_VAL == LOW ) return '6';
+  if (PIN_D3_VAL == LOW  && PIN_D2_VAL == HIGH && PIN_D1_VAL == HIGH && PIN_D0_VAL == HIGH) return '7';
+  if (PIN_D3_VAL == HIGH && PIN_D2_VAL == LOW  && PIN_D1_VAL == LOW  && PIN_D0_VAL == LOW ) return '8';
+  if (PIN_D3_VAL == HIGH && PIN_D2_VAL == LOW  && PIN_D1_VAL == LOW  && PIN_D0_VAL == HIGH) return '9';
+  if (PIN_D3_VAL == HIGH && PIN_D2_VAL == LOW  && PIN_D1_VAL == HIGH && PIN_D0_VAL == LOW ) return '0';
+  if (PIN_D3_VAL == HIGH && PIN_D2_VAL == LOW  && PIN_D1_VAL == HIGH && PIN_D0_VAL == HIGH) return '*';
+  if (PIN_D3_VAL == HIGH && PIN_D2_VAL == HIGH && PIN_D1_VAL == LOW  && PIN_D0_VAL == LOW ) return '#';
+  if (PIN_D3_VAL == HIGH && PIN_D2_VAL == HIGH && PIN_D1_VAL == LOW  && PIN_D0_VAL == HIGH) return 'a';
+  if (PIN_D3_VAL == HIGH && PIN_D2_VAL == HIGH && PIN_D1_VAL == HIGH && PIN_D0_VAL == LOW ) return 'b';
+  if (PIN_D3_VAL == HIGH && PIN_D2_VAL == HIGH && PIN_D1_VAL == HIGH && PIN_D0_VAL == HIGH) return 'c';
+  if (PIN_D3_VAL == LOW  && PIN_D2_VAL == LOW  && PIN_D1_VAL == LOW  && PIN_D0_VAL == LOW ) return 'd';
+  return 'e';
 }
 
 
@@ -246,9 +213,9 @@ void RealHardware::wait_for_packet_or_button_or_timeout(HoldState* holdstate, in
   // // wait for first tone, button, or timeout
   do {
     delay(20);
-    if (button_pressed == 1) return holdstate->_on_button();
-  } while(millis() < timeout_ends && tone_received == 0);
-  if (tone_received == 0) return holdstate->_on_timeout();
+    if (button_pressed == true) return holdstate->_on_button();
+  } while(millis() < timeout_ends && tone_received == false);
+  if (tone_received == false) return holdstate->_on_timeout();
 
   // // outer do is to have a timeout, or * as end of packet
   bool timed_out = false;
@@ -259,7 +226,7 @@ void RealHardware::wait_for_packet_or_button_or_timeout(HoldState* holdstate, in
 
     packet[last_packet++] = tone;
     unsigned int inner_timeout_ends = millis() + PACKET_TIMEOUT_MS; // MAX seconds between TONES
-    tone_received = 0;
+    tone_received = false;
     // clear dsa
 
     // inner do is super short so we catch the result of the interrupt
@@ -275,7 +242,7 @@ void RealHardware::wait_for_packet_or_button_or_timeout(HoldState* holdstate, in
     return holdstate->_on_error();
   }
   //packet[last_packet++] = '/0';
-  tone_received = 0;
+  tone_received = false;
   lcd.clear();
   lcd.print(packet);
   holdstate->_on_packet(packet);

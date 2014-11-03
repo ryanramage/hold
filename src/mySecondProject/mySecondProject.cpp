@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <bcconfig.h>
-#include <BigNumber.h>
 #include <number.h>
 #include <HoldState.h>
 #include <BigNumber.h>
@@ -16,10 +15,6 @@ void setup() {
   RealHardware hw;
   HoldState hold;
 
-
-
-	//Serial.begin(115200);
-  //hold.init(&hw);
   hold.init(&hw);
 
 
