@@ -8,6 +8,7 @@ char HardwareIF::EEPROM_read(int address) const {
   return 0;
 }
 void HardwareIF::EEPROM_write(int address, char val)  {}
+void HardwareIF::LCD_text(char* text) {}
 void HardwareIF::LCD_msg(unsigned char msg_num)  {}
 void HardwareIF::LCD_display_public_key(BigNumber* modulus)  {}
 void HardwareIF::LCD_display_roll(char* rolls, BigNumber* signature){}

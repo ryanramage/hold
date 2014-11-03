@@ -12,6 +12,7 @@ class HardwareIF {
     virtual int  EEPROM_max_size() const;
     virtual char EEPROM_read(int address) const;
     virtual void EEPROM_write(int address, char val);
+    virtual void LCD_text(char* text);
     virtual void LCD_msg(unsigned char msg_num);
     virtual void LCD_display_public_key(BigNumber* modulus);
     virtual void LCD_display_roll(char* rolls, BigNumber* signature);

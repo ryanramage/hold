@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <avr/eeprom.h>
+#include <avr/pgmspace.h>
 #include <../LiquidCrystal/LiquidCrystal.h>
 #include "./RealHardware.h"
 #include "./LCDMessages.h"
@@ -32,12 +33,31 @@
 #define PACKET_TIMEOUT_MS 3000
 #define MAX_PACKET_SIZE  300
 
-const char* LCD_WAITING_MSG = "Waiting...";
-const char* LCD_NO_PRIVATE_KEY = "No Private Key";
-const char* LCD_POWERING_OFF = "Powering Off";
-const char* LCD_DECRYPTION_ERROR = "Decryption Error";
-const char* LCD_PROCESSING = "Processing";
-const char* LCD_PRIVATE_KEY_ERROR = "Private Key Error";
+
+prog_char const string_0[] PROGMEM =  "Waiting...";
+prog_char const string_1[] PROGMEM =  "No Private Key";
+prog_char const string_2[] PROGMEM =  "Powering Off";
+prog_char const string_3[] PROGMEM =  "Decryption Err";
+prog_char const string_4[] PROGMEM =  "Processing";
+prog_char const string_5[] PROGMEM =  "Private Key Err";
+prog_char const string_6[] PROGMEM =  "Before";
+prog_char const string_7[] PROGMEM =  "Middle";
+prog_char const string_8[] PROGMEM =  "After";
+
+PGM_P const messages[] PROGMEM  =
+{
+  string_0,
+  string_1,
+  string_2,
+  string_3,
+  string_4,
+  string_5,
+  string_6,
+  string_7,
+  string_8
+};
+
+char buffer[16];    // make sure this is large enough for the largest string it must hold
 
 
 LiquidCrystal lcd(LCD_RS_PIN, LCD_E_PIN, LCD_D4_PIN, LCD_D5_PIN, LCD_D6_PIN, LCD_D7_PIN);
@@ -45,6 +65,10 @@ LiquidCrystal lcd(LCD_RS_PIN, LCD_E_PIN, LCD_D4_PIN, LCD_D5_PIN, LCD_D6_PIN, LCD
 volatile int button_pressed = 0;
 volatile int tone_received = 0;
 volatile byte last_tone;
+volatile uint8_t PIN_D0_VAL = 0x0;
+volatile uint8_t PIN_D1_VAL = 0x0;
+volatile uint8_t PIN_D2_VAL = 0x0;
+volatile uint8_t PIN_D3_VAL = 0x0;
 
 void on_button(){
   // read the button. might not have to because we got called on rise
@@ -53,7 +77,12 @@ void on_button(){
 
 void on_tone(){
   tone_received = 1;
-  last_tone = PORTC; // http://www.arduino.cc/en/Reference/PortManipulation
+  //last_tone = PORTC; // http://www.arduino.cc/en/Reference/PortManipulation
+  PIN_D0_VAL = digitalRead(HT9170B_PIN_D0);
+  PIN_D1_VAL = digitalRead(HT9170B_PIN_D1);
+  PIN_D2_VAL = digitalRead(HT9170B_PIN_D2);
+  PIN_D3_VAL = digitalRead(HT9170B_PIN_D3);
+
 }
 
 RealHardware::RealHardware() {
@@ -62,7 +91,7 @@ RealHardware::RealHardware() {
   pinMode(SHUTDOWN_PIN, OUTPUT);
   digitalWrite(SHUTDOWN_PIN, HIGH); // keep it latched
 
-  pinMode(BUTTON_PIN, INPUT);
+  //pinMode(BUTTON_PIN, INPUT);
 
   pinMode(HT9170B_PIN_DV, INPUT);
   pinMode(HT9170B_PIN_OE, OUTPUT);
@@ -71,10 +100,12 @@ RealHardware::RealHardware() {
   pinMode(HT9170B_PIN_D2, INPUT);
   pinMode(HT9170B_PIN_D3, INPUT);
 
-  attachInterrupt(0, on_button, RISING);
+  //attachInterrupt(0, on_button, RISING);
   attachInterrupt(1, on_tone, RISING);
+  //digitalWrite(HT9170B_PIN_OE, LOW);
   Serial.begin(9600);
   lcd.begin(16, 2);
+  digitalWrite(HT9170B_PIN_OE, HIGH);
 }
 
 char RealHardware::EEPROM_read(int address) const {
@@ -99,25 +130,36 @@ void print_everywhere(const char* msg) {
   lcd.print(msg);
 }
 
+void RealHardware::LCD_text(char* text) {
+  lcd.clear();
+  lcd.print(text);
+}
+
 void RealHardware::LCD_msg(unsigned char msg_num) {
-  if (msg_num == MSG_WAITING)            print_everywhere(LCD_WAITING_MSG);
-  if (msg_num == MSG_NO_PRIVATE_KEY)     print_everywhere(LCD_NO_PRIVATE_KEY);
-  if (msg_num == MSG_POWER_OFF)          print_everywhere(LCD_POWERING_OFF);
-  if (msg_num == MSG_DECRYPTION_ERROR)   print_everywhere(LCD_DECRYPTION_ERROR);
-  if (msg_num == MSG_PROCESSING)         print_everywhere(LCD_PROCESSING);
-  if (msg_num == MSG_PRIVATE_KEY_ERROR ) print_everywhere(LCD_PRIVATE_KEY_ERROR);
+  if (msg_num > 7) return; // guard
+  char buffer[16];
+  strcpy_P(buffer, (PGM_P)pgm_read_word(&(messages[msg_num])));
+  lcd.clear();
+  lcd.print(buffer);
 }
 
 void RealHardware::LCD_display_public_key(BigNumber* modulus) {
-
+  char* pk = modulus->toString();
+  print_everywhere(pk);
 }
 
 void RealHardware::LCD_display_big_num(BigNumber* modulus){
 
+  char* pk = modulus->toString();
+  print_everywhere(pk);
 }
 
 void RealHardware::LCD_display_roll(char* rolls, BigNumber* signature){
-
+  char* pk = signature->toString();
+  lcd.clear();
+  lcd.print(rolls);
+  lcd.setCursor(0, 1);
+  lcd.print(pk);
 }
 
 
@@ -131,77 +173,111 @@ void RealHardware::button_or_timeout(HoldState* holdstate, int timeout) {
 
   do {
     delay(200);
-    if (button_pressed == 1) holdstate->_on_button();
+    //if (button_pressed == 1) holdstate->_on_button();
   } while(millis() < timeout_ends);
   holdstate->_on_timeout();
 }
 
-char what_char(byte tone){
-  byte valid_pins = B00001111 | tone;
-  switch (valid_pins){
-    case B00000001: return '1';
-    case B00000010: return '2';
-    case B00000011: return '3';
-    case B00000100: return '4';
-    case B00000101: return '5';
-    case B00000110: return '6';
-    case B00000111: return '7';
-    case B00001000: return '8';
-    case B00001001: return '9';
-    case B00001010: return '0';
-    case B00001011: return '*';
-    case B00001100: return '#';
-    case B00001101: return 'a';
-    case B00001110: return 'b';
-    case B00001111: return 'c';
-    case B00000000: return 'd';
+char what_char(){
+  if (PIN_D0_VAL == HIGH && PIN_D1_VAL == LOW && PIN_D2_VAL == LOW && PIN_D3_VAL == LOW) {
+    return '1';
+  }
+  if (PIN_D0_VAL == LOW && PIN_D1_VAL == HIGH && PIN_D2_VAL == LOW && PIN_D3_VAL == LOW) {
+    return '2';
+  }
+  if (PIN_D0_VAL == HIGH && PIN_D1_VAL == HIGH && PIN_D2_VAL == LOW && PIN_D3_VAL == LOW) {
+    return '3';
+  }
+  if (PIN_D0_VAL == LOW && PIN_D1_VAL == LOW && PIN_D2_VAL == HIGH && PIN_D3_VAL == LOW) {
+    return '4';
+  }
+  if (PIN_D0_VAL == HIGH && PIN_D1_VAL == LOW && PIN_D2_VAL == HIGH && PIN_D3_VAL == LOW) {
+    return '5';
+  }
+  if (PIN_D0_VAL == LOW && PIN_D1_VAL == HIGH && PIN_D2_VAL == HIGH && PIN_D3_VAL == LOW) {
+    return '6';
+  }
+  if (PIN_D0_VAL == HIGH && PIN_D1_VAL == HIGH && PIN_D2_VAL == HIGH && PIN_D3_VAL == LOW) {
+    return '7';
+  }
+  if (PIN_D0_VAL == LOW && PIN_D1_VAL == LOW && PIN_D2_VAL == LOW && PIN_D3_VAL == HIGH) {
+    return '8';
+  }
+  if (PIN_D0_VAL == HIGH && PIN_D1_VAL == LOW && PIN_D2_VAL == LOW && PIN_D3_VAL == HIGH) {
+    return '9';
+  }
+  if (PIN_D0_VAL == LOW && PIN_D1_VAL == HIGH && PIN_D2_VAL == LOW && PIN_D3_VAL == HIGH) {
+    return '0';
+  }
+  if (PIN_D0_VAL == HIGH && PIN_D1_VAL == HIGH && PIN_D2_VAL == LOW && PIN_D3_VAL == HIGH) {
+    return '*';
+  }
+  if (PIN_D0_VAL == LOW && PIN_D1_VAL == LOW && PIN_D2_VAL == HIGH && PIN_D3_VAL == HIGH) {
+    return '#';
+  }
+
+  if (PIN_D0_VAL == HIGH && PIN_D1_VAL == LOW && PIN_D2_VAL == HIGH && PIN_D3_VAL == HIGH) {
+    return 'a';
+  }
+  if (PIN_D0_VAL == LOW && PIN_D1_VAL == HIGH && PIN_D2_VAL == HIGH && PIN_D3_VAL == HIGH) {
+    return 'b';
+  }
+  if (PIN_D0_VAL == HIGH && PIN_D1_VAL == HIGH && PIN_D2_VAL == HIGH && PIN_D3_VAL == HIGH) {
+    return 'c';
+  }
+  if (PIN_D0_VAL == LOW && PIN_D1_VAL == LOW && PIN_D2_VAL == LOW && PIN_D3_VAL == LOW) {
+    return 'd';
   }
   return 'E';
 }
 
 
-bool is_star(byte last_tone) {
-  return (what_char(last_tone) == '*') ;
+bool is_star(char last_char) {
+  return (last_char == '*');
 }
 
 
 
 void RealHardware::wait_for_packet_or_button_or_timeout(HoldState* holdstate, int timeout) {
-  unsigned int timeout_ends = millis() + timeout;
+  unsigned int timeout_ends = millis() + (timeout * 1000);
   int last_packet = 0;
   char packet[MAX_PACKET_SIZE] = {};
 
-
-  // wait for first tone, button, or timeout
+  // // wait for first tone, button, or timeout
   do {
     delay(20);
     if (button_pressed == 1) return holdstate->_on_button();
-  } while(millis() < timeout_ends || tone_received == 1);
+  } while(millis() < timeout_ends && tone_received == 0);
   if (tone_received == 0) return holdstate->_on_timeout();
 
-  // do tone processing
-  // outer do is to have a timeout, or * as end of packet
+  // // outer do is to have a timeout, or * as end of packet
+  bool timed_out = false;
+  char tone;
   do {
     // we have just got a tone
-    char tone = what_char(last_tone);
-    Serial.println("tone: ");
-    Serial.println(tone);
+    tone = what_char();
+
     packet[last_packet++] = tone;
-    timeout_ends = millis() + PACKET_TIMEOUT_MS; // MAX seconds between TONES
+    unsigned int inner_timeout_ends = millis() + PACKET_TIMEOUT_MS; // MAX seconds between TONES
     tone_received = 0;
     // clear dsa
 
     // inner do is super short so we catch the result of the interrupt
-    do {
-      delay(20);
-    } while(millis() < timeout_ends || tone_received == 1);
+     do {
+       delay(20);
+     } while(millis() < inner_timeout_ends && tone_received == 0  && tone != '*');
 
-  } while(millis() < timeout_ends || is_star(last_tone) );
+     if (millis() >= inner_timeout_ends  && tone != '*') timed_out = true;
 
-  if (millis() < timeout_ends) return holdstate->_on_error();
+  } while(!timed_out && tone != '*');
 
-  packet[last_packet++] = what_char(last_tone);
+  if (timed_out) {
+    return holdstate->_on_error();
+  }
+  //packet[last_packet++] = '/0';
   tone_received = 0;
+  lcd.clear();
+  lcd.print(packet);
   holdstate->_on_packet(packet);
 }
 

@@ -16,6 +16,7 @@ class RealHardware : public HardwareIF {
     void EEPROM_write(int address, char val) ;
     int  EEPROM_max_size() const;
     void simulateMessage(const char* msg);
+    void LCD_text(char* text);
     void LCD_msg(unsigned char msg_num);
     void LCD_display_public_key(BigNumber* modulus);
     void LCD_display_roll(char* rolls, BigNumber* signature);
@@ -26,7 +27,7 @@ class RealHardware : public HardwareIF {
     virtual void power_off();
 
   private:
-    char _eeprom[1024];
+    //char _eeprom[1024];
 
 
 };

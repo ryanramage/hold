@@ -29,10 +29,10 @@
 #define PACKET_ENCRYPTED 1
 #define PACKET_TO_SIGN 2
 #define PACKET_ROLL_D10 3
+#define PACKET_CLEAR_PK 4
 
 HoldState::HoldState() {
   _state = 0;
-  BigNumber::begin ();  // initialize library
   BigNumber modulus = MODULUS;
   _modulus = &modulus;
 }
@@ -151,7 +151,7 @@ void HoldState::_on_packet(char *packet){
     int i = 0;
     for (; i < num; i++){
       int r = randint(10);
-       sprintf(&rolls[i],"%d",r);
+      sprintf(&rolls[i],"%d",r);
     }
     rolls[i] = '\0';
 
@@ -184,11 +184,16 @@ void HoldState::_on_packet(char *packet){
         fixed = true;
       }
     }
+    _hardware->LCD_msg(MSG_BEFORE);
     BigNumber to_decrypt = BigNumber(message);
+    _hardware->LCD_msg(MSG_MIDDLE);
     BigNumber pt = to_decrypt.powMod(*this->_private_key, *this->_modulus);
+    _hardware->LCD_msg(MSG_AFTER);
     this->_show_decrypted(&pt);
   }
-
+  if (_state == STATE_WAITING && mode == PACKET_CLEAR_PK) {
+    this->clear_private_key();
+  }
 
 }
 void HoldState::_on_button(){
@@ -218,11 +223,18 @@ void HoldState::_on_private_key_error(){
 
 void HoldState::_on_private_key(unsigned short modulus_length, char* modulus, unsigned short private_key_length, char* private_key) {
   this->set_private_key(modulus_length, modulus, private_key_length, private_key);
+  _hardware->LCD_msg(MSG_BEFORE);
+  _hardware->LCD_text(private_key);
+
   BigNumber pk  = BigNumber(private_key);
-  BigNumber mod = BigNumber(modulus);
-  this->_private_key = &pk;
-  this->_modulus = &mod;
-  return this->_show_public_key();
+  _hardware->LCD_msg(MSG_MIDDLE);
+  // BigNumber mod = BigNumber(modulus);
+  _hardware->LCD_msg(MSG_AFTER);
+  // this->_private_key = &pk;
+  // this->_modulus = &mod;
+  // return this->_show_public_key();
+
+
 }
 
 
@@ -275,7 +287,10 @@ void HoldState::set_private_key(unsigned short modulus_length, char* modulus, un
 
 }
 
-
+void HoldState::clear_private_key() {
+  int cur_eeprom_address = 0; // make sure we are at the base
+  this->_hardware->EEPROM_write(cur_eeprom_address, 0);
+}
 // BigNumber get_private_key(HardwareIF* hardware) {
 
 //   // int cur_eeprom_address = 1; // start at the bytes for the n_len
