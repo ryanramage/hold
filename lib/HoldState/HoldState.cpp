@@ -184,12 +184,9 @@ void HoldState::_on_packet(char *packet){
         fixed = true;
       }
     }
-    _hardware->LCD_msg(MSG_BEFORE);
     BigNumber to_decrypt = BigNumber(message);
-    _hardware->LCD_msg(MSG_MIDDLE);
     BigNumber pt = to_decrypt.powMod(*this->_private_key, *this->_modulus);
-    _hardware->LCD_msg(MSG_AFTER);
-    this->_show_decrypted(&pt);
+    return this->_show_decrypted(&pt);
   }
   if (_state == STATE_WAITING && mode == PACKET_CLEAR_PK) {
     this->clear_private_key();
@@ -223,16 +220,12 @@ void HoldState::_on_private_key_error(){
 
 void HoldState::_on_private_key(unsigned short modulus_length, char* modulus, unsigned short private_key_length, char* private_key) {
   this->set_private_key(modulus_length, modulus, private_key_length, private_key);
-  _hardware->LCD_msg(MSG_BEFORE);
-  _hardware->LCD_text(private_key);
 
   BigNumber pk  = BigNumber(private_key);
-  _hardware->LCD_msg(MSG_MIDDLE);
-  // BigNumber mod = BigNumber(modulus);
-  _hardware->LCD_msg(MSG_AFTER);
-  // this->_private_key = &pk;
-  // this->_modulus = &mod;
-  // return this->_show_public_key();
+  BigNumber mod = BigNumber(modulus);
+  this->_private_key = &pk;
+  this->_modulus = &mod;
+  return this->_show_public_key();
 
 
 }

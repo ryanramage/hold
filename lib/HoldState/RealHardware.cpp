@@ -44,9 +44,7 @@ prog_char const string_2[] PROGMEM =  "Powering Off";
 prog_char const string_3[] PROGMEM =  "Decryption Err";
 prog_char const string_4[] PROGMEM =  "Processing";
 prog_char const string_5[] PROGMEM =  "Private Key Err";
-prog_char const string_6[] PROGMEM =  "Before";
-prog_char const string_7[] PROGMEM =  "Middle";
-prog_char const string_8[] PROGMEM =  "After";
+prog_char const string_6[] PROGMEM =  "Receiving...";
 
 PGM_P const messages[] PROGMEM  =
 {
@@ -56,9 +54,7 @@ PGM_P const messages[] PROGMEM  =
   string_3,
   string_4,
   string_5,
-  string_6,
-  string_7,
-  string_8
+  string_6
 };
 
 
@@ -143,6 +139,19 @@ void RealHardware::LCD_msg(unsigned char msg_num) {
   lcd.print(buffer);
 }
 
+void print_receiving(int digit){
+  if (digit == 0) {
+    char buffer[16];
+    strcpy_P(buffer, (PGM_P)pgm_read_word(&(messages[6])));
+    lcd.clear();
+    lcd.print(buffer);
+  }
+  else {
+    lcd.setCursor(0, 1);
+    lcd.print(digit);
+  }
+}
+
 void RealHardware::LCD_display_public_key(BigNumber* modulus) {
   char* pk = modulus->toString();
   print_everywhere(pk);
@@ -169,7 +178,7 @@ void RealHardware::power_off(){
 }
 
 void RealHardware::button_or_timeout(HoldState* holdstate, int timeout) {
-  unsigned int timeout_ends = millis() + timeout;
+  unsigned int timeout_ends = millis() + (timeout * 1000);
 
   do {
     delay(200);
@@ -217,6 +226,7 @@ void RealHardware::wait_for_packet_or_button_or_timeout(HoldState* holdstate, in
   } while(millis() < timeout_ends && tone_received == false);
   if (tone_received == false) return holdstate->_on_timeout();
 
+  print_receiving(0);
   // // outer do is to have a timeout, or * as end of packet
   bool timed_out = false;
   char tone;
@@ -227,6 +237,7 @@ void RealHardware::wait_for_packet_or_button_or_timeout(HoldState* holdstate, in
     packet[last_packet++] = tone;
     unsigned int inner_timeout_ends = millis() + PACKET_TIMEOUT_MS; // MAX seconds between TONES
     tone_received = false;
+    print_receiving(last_packet);
     // clear dsa
 
     // inner do is super short so we catch the result of the interrupt
