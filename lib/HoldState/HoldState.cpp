@@ -31,22 +31,55 @@
 #define PACKET_ROLL_D10 3
 #define PACKET_CLEAR_PK 4
 
-HoldState::HoldState() {
-  _state = 0;
-  BigNumber modulus = MODULUS;
-  _modulus = &modulus;
+char* load_mod(HardwareIF* _hardware) {
+  int cur_eeprom_address = 1; // start at the modulus length
+  unsigned short  modulus_length = _hardware->EEPROM_read(cur_eeprom_address++);
+  unsigned short  private_key_length = _hardware->EEPROM_read(cur_eeprom_address++);
+  unsigned short current_char;
+  char* modulus = (char*) malloc((modulus_length + 1) * sizeof(char));
+
+  for (current_char = 0; current_char < modulus_length; current_char++){
+    modulus[current_char] = _hardware->EEPROM_read(cur_eeprom_address++);
+  }
+  modulus[current_char] = '\0';
+  return modulus;
+}
+
+char* load_pk(HardwareIF* _hardware) {
+  int cur_eeprom_address = 1; // start at the modulus length
+  unsigned short  modulus_length = _hardware->EEPROM_read(cur_eeprom_address++);
+  unsigned short  private_key_length = _hardware->EEPROM_read(cur_eeprom_address++);
+  unsigned short current_char;
+  cur_eeprom_address += modulus_length;
+
+  char* private_key = (char*) malloc((private_key_length + 1) * sizeof(char));
+  for (current_char = 0; current_char < private_key_length; current_char++){
+    private_key[current_char] = _hardware->EEPROM_read(cur_eeprom_address++);
+  }
+
+  private_key[current_char] = '\0';
+  return private_key;
+}
+
+
+
+HoldState::HoldState(HardwareIF* hardware) {
+  _hardware = hardware;
+  srand(hardware->random_seed());
+  char check_byte = _hardware->EEPROM_read(EEPROM_BASE_ADDRESS);
+  if (check_byte != PRIVATE_KEY_SET) _no_private_key();
+
+  BigNumber mod = BigNumber(load_mod(_hardware));
+  _modulus = &mod;
+
+  BigNumber pk = BigNumber(load_pk(_hardware));
+  _private_key = &pk;
+
+  _waiting();
 }
 
 int HoldState::getState() {
   return _state;
-}
-
-void HoldState::init(HardwareIF* hardware){
-  _hardware = hardware;
-  srand(hardware->random_seed());
-  char check_byte = this->_hardware->EEPROM_read(EEPROM_BASE_ADDRESS);
-  if (check_byte != PRIVATE_KEY_SET) return _no_private_key();
-  else return _waiting();
 }
 
 
@@ -74,18 +107,6 @@ void HoldState::_on_encrypted_msg_error(){
   return _hardware->button_or_timeout(this, SHOW_ERROR_SEC);
 }
 
-void HoldState::_on_encrypted_msg(char* msg) {
-  _state = STATE_PROCESS_MSG;
-  _hardware->LCD_msg(MSG_PROCESSING);
-
-  bc_num temp;
-  temp = (bc_num) malloc (sizeof(bc_struct));
-
-  // bc_num ct = bc_str2num(temp, msg, 0);
-  // bc_num msg = bc_raisemod(ct, get_private_key(_hardware), "3594340021")
-  // _hardware->LCD_show_msg(bc_num);
-  // _hardware->button_or_timeout(_waiting, SHOW_LONG_MSG_SEC);
-}
 
 /* Returns an integer in the range [0, n).
  *
@@ -157,7 +178,7 @@ void HoldState::_on_packet(char *packet){
 
     BigNumber rolls_bn = BigNumber(rolls);
     BigNumber sig = rolls_bn.powMod(*this->_private_key, *this->_modulus);
-    return this->_show_rolls(rolls, &sig);
+    this->_show_rolls(rolls, &sig);
   }
   if (_state == STATE_WAITING && mode == PACKET_TO_SIGN) {
     char* message = &packet[3];
@@ -284,35 +305,7 @@ void HoldState::clear_private_key() {
   int cur_eeprom_address = 0; // make sure we are at the base
   this->_hardware->EEPROM_write(cur_eeprom_address, 0);
 }
-// BigNumber get_private_key(HardwareIF* hardware) {
 
-//   // int cur_eeprom_address = 1; // start at the bytes for the n_len
-
-//   // bc_num temp;
-
-//   // temp = (bc_num) malloc (sizeof(bc_struct));
-//   // temp->n_sign = PLUS;
-//   // temp->n_refs = 1;
-//   // temp->n_scale = 0;
-
-//   // // read the n_len int as two bytes
-
-//   // unsigned char *p_int = (unsigned char *)&temp->n_len;
-//   // p_int[0] = hardware->EEPROM_read(cur_eeprom_address++);
-//   // p_int[1] = hardware->EEPROM_read(cur_eeprom_address++);
-
-//   // temp->n_ptr = (char *) malloc (temp->n_len);
-//   // int current_key_char;
-
-//   // for (current_key_char = 0; current_key_char < temp->n_len; current_key_char++){
-//   //   temp->n_ptr[current_key_char] = hardware->EEPROM_read(cur_eeprom_address++);
-//   // }
-//   // temp->n_value = temp->n_ptr;
-
-//   // return temp;
-//   BigNumber fact = 1;
-//   return fact;
-// }
 
 
 

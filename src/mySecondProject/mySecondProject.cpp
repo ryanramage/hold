@@ -13,10 +13,7 @@ void setup() {
 
   BigNumber::begin();  // initialize library
   RealHardware hw;
-  HoldState hold;
-
-  hold.init(&hw);
-
+  HoldState hold = HoldState(&hw);
 
 }
 
