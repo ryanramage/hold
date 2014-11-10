@@ -15,6 +15,9 @@ class HoldState {
     BigNumber getPrivateKey();
     int getState();
 
+    // called by the external loop
+    void run();
+
     // called backs from the hardware
     void _on_packet(char *packet);
     void _on_button();
@@ -28,6 +31,11 @@ class HoldState {
     HardwareIF* _hardware;
     BigNumber* _private_key;
     BigNumber* _modulus;
+
+    bool _button_pressed;
+    bool _timout_occured;
+    bool _error_happened;
+    char* _packet;
     //BigNumber* _public_exponent;
 
     // state changes...
@@ -36,11 +44,16 @@ class HoldState {
     void _power_off();
     void _on_encrypted_msg_error();
     void _on_private_key_error();
-    void _on_private_key(unsigned short modulus_length, char* modulus, unsigned short private_key_length, char* private_key);
+
     void _show_public_key();
 
     void set_private_key(unsigned short modulus_length, char* modulus, unsigned short private_key_length, char* private_key);
     void clear_private_key();
+    void _process_packet();
+    void _process_pk_message(char* message);
+    void _process_roll_message(char* message);
+    void _process_sign_message(char* message);
+    void _process_encrypted_message(char* message);
     void _show_rolls(char* rolls, BigNumber* signature);
     void _show_signature(BigNumber* signature);
     void _show_decrypted(BigNumber* num);
