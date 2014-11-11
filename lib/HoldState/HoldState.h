@@ -35,6 +35,7 @@ class HoldState {
     bool _button_pressed;
     bool _timout_occured;
     bool _error_happened;
+    bool _interupt_set;
     char* _packet;
     //BigNumber* _public_exponent;
 
@@ -42,10 +43,6 @@ class HoldState {
     void _waiting();
     void _no_private_key();
     void _power_off();
-    void _on_encrypted_msg_error();
-    void _on_private_key_error();
-
-    void _show_public_key();
 
     void set_private_key(unsigned short modulus_length, char* modulus, unsigned short private_key_length, char* private_key);
     void clear_private_key();
@@ -54,9 +51,8 @@ class HoldState {
     void _process_roll_message(char* message);
     void _process_sign_message(char* message);
     void _process_encrypted_message(char* message);
-    void _show_rolls(char* rolls, BigNumber* signature);
-    void _show_signature(BigNumber* signature);
-    void _show_decrypted(BigNumber* num);
+    void _show_public_key();
+    void _long_message(unsigned char msg_num);
 };
 
 #endif

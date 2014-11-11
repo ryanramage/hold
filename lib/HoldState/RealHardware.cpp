@@ -171,6 +171,9 @@ void RealHardware::LCD_display_roll(char* rolls, BigNumber* signature){
   lcd.print(pk);
 }
 
+void RealHardware::wait(unsigned int milliseconds){
+  delay(milliseconds);
+}
 
 void RealHardware::power_off(){
   // this unlatches the latch circuit
@@ -217,7 +220,7 @@ bool is_star(char last_char) {
 void RealHardware::wait_for_packet_or_button_or_timeout(HoldState* holdstate, int timeout) {
   unsigned int timeout_ends = millis() + (timeout * 1000);
   int last_packet = 0;
-  char packet[MAX_PACKET_SIZE] = {};
+  char* packet =  (char*) malloc(MAX_PACKET_SIZE * sizeof(char));
 
   // // wait for first tone, button, or timeout
   do {
@@ -254,8 +257,8 @@ void RealHardware::wait_for_packet_or_button_or_timeout(HoldState* holdstate, in
   }
   //packet[last_packet++] = '/0';
   tone_received = false;
-  lcd.clear();
-  lcd.print(packet);
+ // lcd.clear();
+//  lcd.print(packet);
   holdstate->_on_packet(packet);
 }
 

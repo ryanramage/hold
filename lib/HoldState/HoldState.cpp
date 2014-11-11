@@ -10,21 +10,18 @@
 #define EEPROM_BASE_ADDRESS 0
 #define PRIVATE_KEY_SET  3
 
+#define STATE_PROCESSING 9
 #define STATE_NO_PRIVATE_KEY 10
 #define STATE_PROCESS_PRIVATE_KEY 11
 #define STATE_PRIVATE_KEY_ERROR 12
 #define STATE_WAITING 13
-#define STATE_DISPLAY_PUBLIC_KEY 14
-#define STATE_SHOW_ROLLS 141
-#define STATE_PROCESS_MSG 15
-#define STATE_MSG_ERROR 16
-#define STATE_DISPLAY_DECRYPTED_CONTENT 17
-#define STATE_POWER_OFF 18
+#define STATE_MESSAGE_SHOWING 14
+#define STATE_POWER_OFF 15
 
 #define BETWEEN_TONES_TIMEOUT_SEC 1
-#define POWER_OFF_TIMEOUT_SEC 20
+#define POWER_OFF_TIMEOUT_SEC 10
 #define SHOW_ERROR_SEC 2
-#define SHOW_LONG_MSG_SEC 20
+#define SHOW_LONG_MSG_SEC 10
 
 #define PACKET_PRIVATE_KEY 0
 #define PACKET_ENCRYPTED 1
@@ -35,7 +32,7 @@
 char* load_mod(HardwareIF* _hardware) {
   int cur_eeprom_address = 1; // start at the modulus length
   unsigned short  modulus_length = _hardware->EEPROM_read(cur_eeprom_address++);
-
+  unsigned short  private_key_length = _hardware->EEPROM_read(cur_eeprom_address++);
   unsigned short current_char;
   char* modulus = (char*) malloc((modulus_length + 1) * sizeof(char));
 
@@ -63,12 +60,18 @@ char* load_pk(HardwareIF* _hardware) {
 }
 
 
+bool has_pk(HardwareIF* _hardware) {
+  char check_byte = _hardware->EEPROM_read(EEPROM_BASE_ADDRESS);
+  return check_byte != PRIVATE_KEY_SET;
+}
+
 
 HoldState::HoldState(HardwareIF* hardware) {
   _hardware = hardware;
   _button_pressed = false;
   _timout_occured = false;
   _error_happened = false;
+  _interupt_set   = false;
   _packet = NULL;
   srand(hardware->random_seed());
   char check_byte = _hardware->EEPROM_read(EEPROM_BASE_ADDRESS);
@@ -77,11 +80,8 @@ HoldState::HoldState(HardwareIF* hardware) {
     return;
   }
 
-  BigNumber mod = BigNumber(load_mod(_hardware));
-  _modulus = &mod;
-
-  BigNumber pk = BigNumber(load_pk(_hardware));
-  _private_key = &pk;
+  _modulus = new BigNumber(load_mod(_hardware));
+  _private_key = new BigNumber(load_pk(_hardware));
 
   _state = STATE_WAITING;
   return;
@@ -94,11 +94,21 @@ int HoldState::getState() {
 
 void HoldState::run(){
   switch(_state) {
+    case STATE_PROCESSING: {
+        _button_pressed = false; //clear flag
+        _timout_occured = false; // clear flag
+        _interupt_set = false;
+        _packet = NULL;
+        _long_message(MSG_DECRYPTION_ERROR);
+    }
+
+
     case STATE_NO_PRIVATE_KEY: {
 
       if (_button_pressed || _timout_occured){
         _button_pressed = false; //clear flag
         _timout_occured = false; // clear flag
+        _interupt_set = false;
         _state = STATE_POWER_OFF;
         return;
       }
@@ -113,12 +123,16 @@ void HoldState::run(){
 
       if (_button_pressed){
         _button_pressed = false; // clear flag
-        _state = STATE_DISPLAY_PUBLIC_KEY;
+        _interupt_set = false;
+        _state = STATE_MESSAGE_SHOWING;
+        _show_public_key();
         return;
       }
       if (_timout_occured) {
         _timout_occured = false; // clear flag
+        _interupt_set = false;
         _state = STATE_POWER_OFF;
+        _power_off();
         return;
       }
       if (_packet != NULL){
@@ -127,38 +141,37 @@ void HoldState::run(){
 
       return _waiting();
     }
-    case STATE_DISPLAY_PUBLIC_KEY: {
-      if (_button_pressed || _timout_occured){
-        _button_pressed = false; // clear flag
-        _timout_occured = false;
-        _state = STATE_WAITING;
-        return;
-      }
-      return _show_public_key();
+    case STATE_MESSAGE_SHOWING: {
+      _button_pressed = false; // clear flag
+      _timout_occured = false;
+      _interupt_set = false;
+      _state = STATE_WAITING;
+      return;
     }
     case STATE_POWER_OFF: return _power_off();
-    case STATE_MSG_ERROR: return _on_encrypted_msg_error();
+
   }
 }
 
 void HoldState::_waiting(){
+  if (_interupt_set) return;
   _hardware->LCD_msg(MSG_WAITING);
   _hardware->wait_for_packet_or_button_or_timeout(this, POWER_OFF_TIMEOUT_SEC);
+  _interupt_set = true;
 }
 
 void HoldState::_no_private_key(){
+  if (_interupt_set) return;
   _hardware->LCD_msg(MSG_NO_PRIVATE_KEY);
   _hardware->wait_for_packet_or_button_or_timeout(this, POWER_OFF_TIMEOUT_SEC);
+  _interupt_set = true;
 }
 
 void HoldState::_power_off(){
+  if (_interupt_set) return;
   _hardware->LCD_msg(MSG_POWER_OFF);
   _hardware->power_off();
-}
-
-void HoldState::_on_encrypted_msg_error(){
-  _hardware->LCD_msg(MSG_DECRYPTION_ERROR);
-  _hardware->button_or_timeout(this, SHOW_ERROR_SEC);
+  _interupt_set = true;
 }
 
 
@@ -188,6 +201,7 @@ int randint(int n) {
 
 
 void HoldState::_process_packet(){
+  _state = STATE_PROCESSING;
   _hardware->LCD_msg(MSG_PROCESSING);
   int mode = _packet[1] - '0';
   char* message_ = &_packet[3];
@@ -199,15 +213,13 @@ void HoldState::_process_packet(){
       fixed = true;
     }
   }
-  if (!fixed) {
-    _state = STATE_MSG_ERROR;
-    return;
-  }
+  if (!fixed) return _long_message(MSG_PRIVATE_KEY_ERROR);
 
-  if (mode == PACKET_PRIVATE_KEY) return _process_pk_message(message_);
-  if (mode == PACKET_ROLL_D10)    return _process_roll_message(message_);
-  if (mode == PACKET_TO_SIGN)     return _process_sign_message(message_);
-  if (mode == PACKET_ENCRYPTED)   return _process_encrypted_message(message_);
+  if (mode == PACKET_PRIVATE_KEY) _process_pk_message(message_);
+  if (mode == PACKET_ROLL_D10)    _process_roll_message(message_);
+  if (mode == PACKET_TO_SIGN)     _process_sign_message(message_);
+  if (mode == PACKET_ENCRYPTED)   _process_encrypted_message(message_);
+  _packet = NULL;
 }
 
 
@@ -244,7 +256,8 @@ void HoldState::_process_pk_message(char* message){
   BigNumber mod = BigNumber(modulus);
   this->_private_key = &pk;
   this->_modulus = &mod;
-  _state = STATE_DISPLAY_PUBLIC_KEY;
+
+  _show_public_key();
 }
 
 void HoldState::_process_roll_message(char* message) {
@@ -263,16 +276,19 @@ void HoldState::_process_roll_message(char* message) {
   BigNumber rolls_bn = BigNumber(rolls);
   BigNumber sig = rolls_bn.powMod(*this->_private_key, *this->_modulus);
 
+  _state = STATE_MESSAGE_SHOWING;
   _hardware->LCD_display_roll(rolls, &sig);
-  _state = STATE_SHOW_ROLLS;
-
+  _hardware->button_or_timeout(this, SHOW_LONG_MSG_SEC);
 }
 
 void HoldState::_process_sign_message(char* message){
 
   BigNumber to_sign = BigNumber(message);
-  BigNumber sig = to_sign.powMod(*this->_private_key, *this->_modulus);
-  return this->_show_signature(&sig);
+  BigNumber signature = to_sign.powMod(*this->_private_key, *this->_modulus);
+
+  _state = STATE_MESSAGE_SHOWING;
+  _hardware->LCD_display_big_num(&signature);
+  _hardware->button_or_timeout(this, SHOW_LONG_MSG_SEC);
 
 }
 
@@ -280,7 +296,11 @@ void HoldState::_process_encrypted_message(char* message){
 
   BigNumber to_decrypt = BigNumber(message);
   BigNumber pt = to_decrypt.powMod(*this->_private_key, *this->_modulus);
-  return this->_show_decrypted(&pt);
+
+   _state = STATE_MESSAGE_SHOWING;
+  _hardware->LCD_display_big_num(&pt);
+  _hardware->button_or_timeout(this, SHOW_LONG_MSG_SEC);
+
 }
 
 
@@ -299,27 +319,16 @@ void HoldState::_on_error(){
 }
 
 
-void HoldState::_on_private_key_error(){
-  _hardware->LCD_msg(MSG_PRIVATE_KEY_ERROR);
-  _hardware->button_or_timeout(this, SHOW_ERROR_SEC);
-}
-
-
-
 void HoldState::_show_public_key(){
+  _state = STATE_MESSAGE_SHOWING;
   _hardware->LCD_display_public_key(this->_modulus);
   return _hardware->button_or_timeout(this, SHOW_LONG_MSG_SEC);
 }
 
-
-void HoldState::_show_signature(BigNumber* signature){
-  _hardware->LCD_display_big_num(signature);
-  return _hardware->button_or_timeout(this, SHOW_LONG_MSG_SEC);
-}
-
-void HoldState::_show_decrypted(BigNumber* num) {
-  _hardware->LCD_display_big_num(num);
-  return _hardware->button_or_timeout(this, SHOW_LONG_MSG_SEC);
+void HoldState::_long_message(unsigned char msg_num) {
+  _state = STATE_MESSAGE_SHOWING;
+  _hardware->LCD_msg(msg_num);
+  _hardware->button_or_timeout(this, SHOW_LONG_MSG_SEC);
 }
 
 
@@ -351,8 +360,3 @@ void HoldState::clear_private_key() {
   int cur_eeprom_address = 0; // make sure we are at the base
   this->_hardware->EEPROM_write(cur_eeprom_address, 0);
 }
-
-
-
-
-

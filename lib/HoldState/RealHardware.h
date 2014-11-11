@@ -25,6 +25,7 @@ class RealHardware : public HardwareIF {
     virtual void wait_for_packet_or_button_or_timeout(HoldState* holdstate, int timeout);
     virtual int random_seed();
     virtual void power_off();
+    virtual void wait(unsigned int milliseconds);
 
   private:
     //char _eeprom[1024];
